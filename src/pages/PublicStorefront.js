@@ -322,7 +322,7 @@ const PublicStorefront = () => {
                 className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg sm:rounded-xl text-red-400 font-medium transition-all active:scale-95"
               >
                 <MessageSquareWarning className="w-4 h-4" />
-                <span className="hidden sm:inline text-sm">Complaint</span>
+                <span className="hidden sm:inline text-sm">Help</span>
               </button>
               <button
                 onClick={() => setShowTrackingModal(true)}
