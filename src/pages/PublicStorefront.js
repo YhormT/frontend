@@ -150,7 +150,7 @@ const PublicStorefront = () => {
     setProcessing(false);
   };
 
-  const validPrefixes = ['024', '054', '055', '059', '020', '050', '027', '057', '026', '056', '028'];
+  const validPrefixes = ['024', '025', '053', '054', '055', '059', '020', '050', '027', '057', '026', '056', '028'];
   
   const validatePhoneNumber = (phone) => {
     if (!phone || phone.length !== 10) return false;
@@ -322,14 +322,14 @@ const PublicStorefront = () => {
                 className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg sm:rounded-xl text-red-400 font-medium transition-all active:scale-95"
               >
                 <MessageSquareWarning className="w-4 h-4" />
-                <span className="hidden sm:inline text-sm">Help</span>
+                <span className="sm:inline text-sm">Help</span>
               </button>
               <button
                 onClick={() => setShowTrackingModal(true)}
                 className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-600 rounded-lg sm:rounded-xl text-white text-sm sm:text-base font-medium shadow-lg shadow-cyan-500/25 hover:from-cyan-600 hover:to-cyan-700 transition-all active:scale-95"
               >
                 <Search className="w-4 h-4" />
-                <span className="text-sm sm:text-base">Track Order</span>
+                <span className="text-sm sm:text-base">Track</span>
               </button>
             </div>
           </div>

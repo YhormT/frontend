@@ -123,7 +123,7 @@ const SuperAgent = () => {
     });
   }, [products, selectedCategory]);
 
-  const validPrefixes = ['024', '054', '055', '059', '020', '050', '027', '057', '026', '056', '028'];
+  const validPrefixes = ['024', '025', '053', '054', '055', '059', '020', '050', '027', '057', '026', '056', '028'];
   
   const validatePhoneNumber = (phone) => {
     if (!phone || phone.length !== 10) return false;
