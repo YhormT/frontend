@@ -177,7 +177,15 @@ const ComplaintsViewer = ({ isOpen, onClose }) => {
                             <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusStyle(complaint.status)}`}>
                               {getStatusIcon(complaint.status)} {complaint.status}
                             </span>
-                            <span className="text-xs text-dark-500">{new Date(complaint.createdAt).toLocaleString()}</span>
+                            {complaint.complaintDate && (
+                              <span className="text-xs text-dark-500">Date of Issue: {new Date(complaint.complaintDate).toLocaleDateString()}</span>
+                            )}
+                            {complaint.complaintTime && (
+                              <span className="text-xs text-dark-500">Time of Issue: {complaint.complaintTime}</span>
+                            )}
+                            {!complaint.complaintDate && !complaint.complaintTime && (
+                              <span className="text-xs text-dark-500">{new Date(complaint.createdAt).toLocaleString()}</span>
+                            )}
                           </div>
                           <div className="flex flex-wrap items-center gap-3 mb-2 text-sm">
                             <span className="text-cyan-400 font-medium">ID: #{complaint.id}</span>

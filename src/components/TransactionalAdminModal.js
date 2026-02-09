@@ -226,11 +226,16 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
         revenueOrderCount++;
       }
       
-      // Total GB from completed orders only
+      // Total GB from completed agent orders only (exclude shop/storefront orders)
       if (status === 'completed') {
-        const description = order.product?.description || '';
-        const match = description.match(/(\d+(?:\.\d+)?)\s*GB/i);
-        if (match) totalGB += parseFloat(match[1]);
+        const userEmail = (order.user?.email || '').toLowerCase();
+        const userName = (order.user?.name || '').toLowerCase();
+        const isShopOrder = userEmail.includes('shop@') || userName === 'shop';
+        if (!isShopOrder) {
+          const description = order.product?.description || '';
+          const match = description.match(/(\d+(?:\.\d+)?)\s*GB/i);
+          if (match) totalGB += parseFloat(match[1]);
+        }
       }
     });
     
