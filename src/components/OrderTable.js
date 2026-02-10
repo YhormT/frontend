@@ -169,7 +169,72 @@ const OrderTable = ({ isOpen, onClose }) => {
   });
 
 
+  // Check if any filters are active (date, time, product, status, phone, source, orderId)
+  const hasActiveFilters = selectedDate || startTime || endTime || selectedProduct || selectedStatus || phoneNumberFilter || sourceFilter || orderIdFilter;
+
   const handleProcessOrder = async (orderItemId, status) => {
+    // If filters are active, offer to update all filtered orders
+    if (hasActiveFilters && filteredItems.length > 1) {
+      const eligibleItems = filteredItems.filter(item => {
+        const currentStatus = item.order?.items?.[0]?.status;
+        if (currentStatus === status) return false; // Already in target status
+        if (status === 'Completed' && (currentStatus === 'Pending' || currentStatus === 'Processing')) return true;
+        if (status === 'Processing' && (currentStatus === 'Pending' || currentStatus === 'Completed')) return true;
+        if (status === 'Cancelled' && (currentStatus === 'Pending' || currentStatus === 'Processing')) return true;
+        return false;
+      });
+
+      if (eligibleItems.length > 1) {
+        const result = await Swal.fire({
+          icon: 'question',
+          title: 'Update Filtered Orders?',
+          html: `You have <b>${filteredItems.length}</b> orders in the current filtered view.<br/><b>${eligibleItems.length}</b> can be updated to <b>${status}</b>.<br/><br/>Update just this one or all filtered orders?`,
+          showCancelButton: true,
+          showDenyButton: true,
+          confirmButtonText: `Update All ${eligibleItems.length}`,
+          denyButtonText: 'Just This One',
+          cancelButtonText: 'Cancel',
+          confirmButtonColor: '#6366f1',
+          denyButtonColor: '#64748b',
+          background: '#1e293b',
+          color: '#f1f5f9'
+        });
+
+        if (result.isDismissed) return; // Cancelled
+
+        if (result.isConfirmed) {
+          // Update all eligible filtered items
+          try {
+            Swal.fire({ title: `Updating ${eligibleItems.length} orders...`, allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e293b', color: '#f1f5f9' });
+            const batchSize = 10;
+            let successCount = 0;
+            let failCount = 0;
+            for (let i = 0; i < eligibleItems.length; i += batchSize) {
+              const batch = eligibleItems.slice(i, i + batchSize);
+              const results = await Promise.allSettled(
+                batch.map(item => axios.post(`${BASE_URL}/order/admin/process/order`, { orderItemId: item.id, status }))
+              );
+              results.forEach(r => { if (r.status === 'fulfilled') successCount++; else failCount++; });
+            }
+            Swal.fire({
+              icon: failCount === 0 ? 'success' : 'warning',
+              title: 'Bulk Update Complete',
+              text: `${successCount} updated successfully${failCount > 0 ? `, ${failCount} failed` : ''}`,
+              timer: 2000,
+              background: '#1e293b',
+              color: '#f1f5f9'
+            });
+            fetchOrders();
+          } catch (error) {
+            Swal.fire({ icon: 'error', title: 'Bulk Update Failed', text: error.message, background: '#1e293b', color: '#f1f5f9' });
+          }
+          return;
+        }
+        // If denied (Just This One), fall through to single update below
+      }
+    }
+
+    // Single item update
     try {
       Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e293b', color: '#f1f5f9' });
       await axios.post(`${BASE_URL}/order/admin/process/order`, { orderItemId, status });

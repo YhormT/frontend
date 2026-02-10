@@ -91,11 +91,14 @@ const AdminDashboard = () => {
   
   const sidebarRef = useRef(null);
   const notificationRef = useRef(null);
+  const fetchInProgress = useRef(false);
 
   const userName = localStorage.getItem('name') || 'Admin';
 
   // Initial data load with loading indicator
   const fetchData = useCallback(async (showLoading = true) => {
+    if (fetchInProgress.current && !showLoading) return; // Skip if a fetch is already running (background refresh)
+    fetchInProgress.current = true;
     if (showLoading) setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -181,6 +184,7 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
+      fetchInProgress.current = false;
       if (showLoading) setIsLoading(false);
     }
   }, []);
@@ -197,7 +201,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchData(true); // Initial load with loading indicator
     // Background refresh without visible loading - every 10 seconds
-    const interval = setInterval(() => fetchData(false), 10000);
+    const interval = setInterval(() => fetchData(false), 30000);
     return () => clearInterval(interval);
   }, [fetchData]);
 

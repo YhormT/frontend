@@ -96,7 +96,7 @@ const NormalAgent = () => {
   useEffect(() => {
     if (showHistory) {
       fetchOrderHistory();
-      const interval = setInterval(fetchOrderHistory, 5000);
+      const interval = setInterval(fetchOrderHistory, 20000);
       return () => clearInterval(interval);
     }
   }, [showHistory, fetchOrderHistory]);
