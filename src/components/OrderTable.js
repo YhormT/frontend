@@ -206,16 +206,11 @@ const OrderTable = ({ isOpen, onClose }) => {
           // Update all eligible filtered items
           try {
             Swal.fire({ title: `Updating ${eligibleItems.length} orders...`, allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e293b', color: '#f1f5f9' });
-            const batchSize = 10;
-            let successCount = 0;
-            let failCount = 0;
-            for (let i = 0; i < eligibleItems.length; i += batchSize) {
-              const batch = eligibleItems.slice(i, i + batchSize);
-              const results = await Promise.allSettled(
-                batch.map(item => axios.post(`${BASE_URL}/order/admin/process/order`, { orderItemId: item.id, status }))
-              );
-              results.forEach(r => { if (r.status === 'fulfilled') successCount++; else failCount++; });
-            }
+            const allResults = await Promise.allSettled(
+              eligibleItems.map(item => axios.post(`${BASE_URL}/order/admin/process/order`, { orderItemId: item.id, status }))
+            );
+            const successCount = allResults.filter(r => r.status === 'fulfilled').length;
+            const failCount = allResults.filter(r => r.status === 'rejected').length;
             Swal.fire({
               icon: failCount === 0 ? 'success' : 'warning',
               title: 'Bulk Update Complete',
