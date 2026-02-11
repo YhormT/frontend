@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Swal from 'sweetalert2';
@@ -144,17 +144,23 @@ const OtherDashboard = () => {
     }
   };
 
+  const addingToCartRef = useRef(false);
+
   const addToCart = async (productId) => {
+    if (addingToCartRef.current) return;
+    addingToCartRef.current = true;
     const product = filteredProducts.find(p => p.id === productId);
-    if (!product) return;
+    if (!product) { addingToCartRef.current = false; return; }
     const mobileNumber = mobileNumbers[productId] || '';
     if (!mobileNumber.trim() || mobileNumber.length !== 10) {
       setErrors(prev => ({ ...prev, [productId]: 'Please enter a valid 10-digit mobile number' }));
+      addingToCartRef.current = false;
       return;
     }
     
     if (!validatePhoneNumber(mobileNumber)) {
       setErrors(prev => ({ ...prev, [productId]: 'Invalid prefix. Use 024, 054, 055, 059, 020, 050, 027, 057, 026, 056, 028' }));
+      addingToCartRef.current = false;
       return;
     }
 
@@ -172,13 +178,14 @@ const OtherDashboard = () => {
         background: '#1e293b',
         color: '#f1f5f9'
       });
-      if (!result.isConfirmed) return;
+      if (!result.isConfirmed) { addingToCartRef.current = false; return; }
     }
 
     const currentBalance = Math.abs(parseFloat(loanBalance?.loanBalance || 0));
     const currentCartTotal = cart.reduce((total, item) => total + (item.product?.price || 0) * (item.quantity || 1), 0);
     if (currentCartTotal + product.price > currentBalance) {
       Swal.fire({ icon: 'warning', title: 'Insufficient Balance', background: '#1e293b', color: '#f1f5f9' });
+      addingToCartRef.current = false;
       return;
     }
     try {
@@ -191,6 +198,8 @@ const OtherDashboard = () => {
       setMobileNumbers(prev => ({ ...prev, [productId]: '' }));
     } catch (error) {
       Swal.fire({ icon: 'error', title: 'Error', background: '#1e293b', color: '#f1f5f9' });
+    } finally {
+      addingToCartRef.current = false;
     }
   };
 
