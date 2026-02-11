@@ -118,7 +118,7 @@ const OrderTable = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (autoRefresh && isOpen) {
-      intervalRef.current = setInterval(fetchOrders, 10000);
+      intervalRef.current = setInterval(fetchOrders, 30000);
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [autoRefresh, isOpen, fetchOrders]);

@@ -89,7 +89,7 @@ const Premium = () => {
     const role = localStorage.getItem('role');
     if (role !== 'PREMIUM') navigate('/login');
     fetchData();
-    const interval = setInterval(fetchLoanBalance, 15000);
+    const interval = setInterval(fetchLoanBalance, 60000);
     return () => clearInterval(interval);
   }, [fetchData, fetchLoanBalance, navigate]);
 
@@ -151,6 +151,24 @@ const Premium = () => {
       setErrors(prev => ({ ...prev, [productId]: 'Invalid prefix. Use 024, 054, 055, 059, 020, 050, 027, 057, 026, 056, 028' }));
       return;
     }
+
+    // Check for duplicate: same product and same mobile number already in cart
+    const duplicate = cart.find(item => item.product?.id === productId && item.mobileNumber === mobileNumber);
+    if (duplicate) {
+      const result = await Swal.fire({
+        icon: 'warning',
+        title: 'Duplicate Item',
+        html: `<b>${product.name}</b> for <b>${mobileNumber}</b> is already in your cart.<br/>Do you want to add it again?`,
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Add Again',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#6366f1',
+        background: '#1e293b',
+        color: '#f1f5f9'
+      });
+      if (!result.isConfirmed) return;
+    }
+
     const currentBalance = Math.abs(parseFloat(loanBalance?.loanBalance || 0));
     const currentCartTotal = cart.reduce((total, item) => total + (item.product?.price || 0) * (item.quantity || 1), 0);
     if (currentCartTotal + product.price > currentBalance) {

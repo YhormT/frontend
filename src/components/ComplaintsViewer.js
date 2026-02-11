@@ -3,6 +3,7 @@ import { MessageSquareWarning, X, CheckCircle, Clock, AlertCircle, Phone, Loader
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import BASE_URL from '../endpoints/endpoints';
+import socketIO from 'socket.io-client';
 
 const ComplaintsViewer = ({ isOpen, onClose }) => {
   const [complaints, setComplaints] = useState([]);
@@ -63,6 +64,17 @@ const ComplaintsViewer = ({ isOpen, onClose }) => {
     const role = localStorage.getItem('role');
     if (isOpen && role?.toUpperCase() === 'ADMIN') fetchComplaints();
   }, [isOpen, fetchComplaints]);
+
+  // Real-time complaint notifications via socket
+  useEffect(() => {
+    if (!isOpen) return;
+    const socket = socketIO(BASE_URL, { transports: ['websocket', 'polling'] });
+    socket.on('new-complaint', () => {
+      fetchComplaints();
+      fetchPendingCount();
+    });
+    return () => socket.disconnect();
+  }, [isOpen, fetchComplaints, fetchPendingCount]);
 
   const handleUpdateStatus = async (id, newStatus) => {
     try {
