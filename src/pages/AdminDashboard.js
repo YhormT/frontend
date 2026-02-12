@@ -282,7 +282,7 @@ const AdminDashboard = () => {
       setShowUserModal(false);
       fetchUsers();
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Failed!', text: 'Failed to add user.', background: '#1e293b', color: '#f1f5f9' });
+      Swal.fire({ icon: 'error', title: 'Failed!', text: error.response?.data?.message || 'Failed to add user.', background: '#1e293b', color: '#f1f5f9' });
     }
   };
 
