@@ -690,7 +690,7 @@ const AdminDashboard = () => {
 
                   {/* Recent Orders */}
                   <div className="bg-dark-800/50 backdrop-blur rounded-xl sm:rounded-2xl border border-dark-700 p-4 sm:p-6">
-                    <h3 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4">Recent Orders ({(Array.isArray(orders) ? orders : []).slice(0, 3).length})</h3>
+                    <h3 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4">Recent Orders ({(Array.isArray(orders) ? orders : []).slice(0, 10).length})</h3>
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
@@ -704,7 +704,7 @@ const AdminDashboard = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {(Array.isArray(orders) ? orders : []).slice(0, 3).map((item, index) => {
+                          {(Array.isArray(orders) ? orders : []).slice(0, 10).map((item, index) => {
                             const status = item.order?.items?.[0]?.status || item.status || 'N/A';
                             return (
                               <tr key={`${item.id}-${item.orderId}-${index}`} className="border-b border-dark-700/50">

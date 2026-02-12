@@ -13,7 +13,7 @@ const ComplaintsViewer = ({ isOpen, onClose }) => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [adminNotes, setAdminNotes] = useState('');
 
-  const fetchComplaints = useCallback(async () => {
+  const fetchComplaints = useCallback(async (retryCount = 0) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -24,6 +24,10 @@ const ComplaintsViewer = ({ isOpen, onClose }) => {
       setComplaints(res.data.data || []);
     } catch (err) {
       console.error('Error fetching complaints:', err);
+      if (retryCount < 1) {
+        await new Promise(r => setTimeout(r, 1500));
+        return fetchComplaints(retryCount + 1);
+      }
     } finally {
       setLoading(false);
     }
