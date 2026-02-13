@@ -10,6 +10,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
+  const [promoPrice, setPromoPrice] = useState('');
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,6 +44,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
     setDescription('');
     setPrice('');
     setStock('');
+    setPromoPrice('');
   };
 
   const handleEditClick = (product) => {
@@ -51,6 +53,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
     setDescription(product.description);
     setPrice(product.price);
     setStock(product.stock);
+    setPromoPrice(product.promoPrice || '');
   };
 
   const handleSaveProduct = async () => {
@@ -61,7 +64,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
 
     setIsLoading(true);
     try {
-      const productData = { name: productName, description, price: parseFloat(price), stock: parseInt(stock, 10) };
+      const productData = { name: productName, description, price: parseFloat(price), stock: parseInt(stock, 10), promoPrice: promoPrice !== '' ? parseFloat(promoPrice) : null };
 
       if (productId) {
         await axios.put(`${BASE_URL}/products/update/${productId}`, productData);
@@ -199,6 +202,44 @@ const ProductDialog = ({ isOpen, onClose }) => {
     }
   };
 
+  const handleTogglePromo = async (id, currentValue) => {
+    try {
+      await axios.put(`${BASE_URL}/products/toggle-promo/${id}`, { usePromoPrice: !currentValue });
+      setProducts(products.map(p => p.id === id ? { ...p, usePromoPrice: !currentValue } : p));
+    } catch (error) {
+      console.error('Error toggling promo price:', error);
+      Swal.fire({ title: 'Error!', text: 'Failed to toggle promo price', icon: 'error', background: '#1e293b', color: '#f1f5f9' });
+    }
+  };
+
+  const handleBulkTogglePromo = async (usePromoPrice) => {
+    try {
+      const carrier = searchQuery.trim() || null;
+      await axios.patch(`${BASE_URL}/products/bulk-toggle-promo`, { usePromoPrice, carrier });
+      if (carrier) {
+        setProducts(products.map(p => 
+          p.name?.toLowerCase().includes(carrier.toLowerCase()) ? { ...p, usePromoPrice } : p
+        ));
+      } else {
+        setProducts(products.map(p => ({ ...p, usePromoPrice })));
+      }
+      Swal.fire({ 
+        title: usePromoPrice ? 'Promo Prices Active' : 'Main Prices Active', 
+        text: usePromoPrice 
+          ? `Products ${carrier ? `matching "${carrier}"` : ''} switched to promo prices` 
+          : `Products ${carrier ? `matching "${carrier}"` : ''} switched to main prices`, 
+        icon: 'success', 
+        background: '#1e293b', 
+        color: '#f1f5f9', 
+        timer: 1500,
+        showConfirmButton: false
+      });
+    } catch (error) {
+      console.error('Error bulk toggling promo prices:', error);
+      Swal.fire({ title: 'Error!', text: 'Failed to switch prices', icon: 'error', background: '#1e293b', color: '#f1f5f9' });
+    }
+  };
+
   const handleBulkAgentVisibility = async (showForAgents) => {
     try {
       const carrier = searchQuery.trim() || null;
@@ -238,145 +279,221 @@ const ProductDialog = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-dark-800 border border-dark-700 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-3 sm:p-4">
+      <div className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-700/50 rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col">
+
         {/* Header */}
-        <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Package className="w-8 h-8 text-white" />
-            <div>
-              <h2 className="text-xl font-bold text-white">Product Management</h2>
-              <p className="text-cyan-100 text-sm">{products.length} products</p>
+        <div className="relative px-6 py-4 border-b border-slate-700/50 flex-shrink-0">
+          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-transparent to-purple-500/5"></div>
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <Package className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white tracking-tight">Product Management</h2>
+                <p className="text-slate-400 text-xs mt-0.5">{products.length} total &middot; {filteredProducts.length} shown</p>
+              </div>
             </div>
+            <button onClick={() => { resetForm(); onClose(); }}
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600/50 transition-colors group">
+              <X className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />
+            </button>
           </div>
-          <button onClick={() => { resetForm(); onClose(); }} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg">
-            <X className="w-5 h-5 text-white" />
-          </button>
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
           {/* Add/Edit Form */}
-          <div className="bg-dark-900/50 rounded-xl p-4 mb-6 border border-dark-700">
-            <h3 className="text-white font-semibold mb-4">{productId ? 'Edit Product' : 'Add New Product'}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <input type="text" placeholder="Product Name" value={productName} onChange={(e) => setProductName(e.target.value)}
-                className="bg-dark-800 border border-dark-600 rounded-lg px-4 py-2 text-white placeholder-dark-400 focus:border-cyan-500 focus:outline-none" />
-              <input type="text" placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)}
-                className="bg-dark-800 border border-dark-600 rounded-lg px-4 py-2 text-white placeholder-dark-400 focus:border-cyan-500 focus:outline-none" />
-              <input type="number" placeholder="Price (GHS)" value={price} onChange={(e) => setPrice(e.target.value)}
-                className="bg-dark-800 border border-dark-600 rounded-lg px-4 py-2 text-white placeholder-dark-400 focus:border-cyan-500 focus:outline-none" />
-              <input type="number" placeholder="Stock" value={stock} onChange={(e) => setStock(e.target.value)}
-                className="bg-dark-800 border border-dark-600 rounded-lg px-4 py-2 text-white placeholder-dark-400 focus:border-cyan-500 focus:outline-none" />
+          <div className="bg-slate-800/30 rounded-xl p-5 border border-slate-700/30 ring-1 ring-slate-700/10">
+            <div className="flex items-center gap-2 mb-4">
+              <div className={`w-1.5 h-5 rounded-full ${productId ? 'bg-amber-500' : 'bg-cyan-500'}`}></div>
+              <h3 className="text-sm font-semibold text-white">{productId ? 'Edit Product' : 'New Product'}</h3>
+              {productId && <span className="text-[10px] text-amber-400/80 bg-amber-500/10 px-2 py-0.5 rounded-full font-medium">ID #{productId}</span>}
             </div>
-            <div className="flex gap-3 mt-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div className="col-span-2 sm:col-span-1 lg:col-span-2">
+                <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-widest">Name</label>
+                <input type="text" placeholder="e.g. MTN 5GB" value={productName} onChange={(e) => setProductName(e.target.value)}
+                  className="w-full bg-slate-900/50 border border-slate-600/30 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 focus:outline-none transition-all" />
+              </div>
+              <div className="col-span-2 sm:col-span-1 lg:col-span-2">
+                <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-widest">Description</label>
+                <input type="text" placeholder="Product description" value={description} onChange={(e) => setDescription(e.target.value)}
+                  className="w-full bg-slate-900/50 border border-slate-600/30 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 focus:outline-none transition-all" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-widest">Price (GHS)</label>
+                <input type="number" placeholder="0.00" value={price} onChange={(e) => setPrice(e.target.value)}
+                  className="w-full bg-slate-900/50 border border-slate-600/30 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 focus:outline-none transition-all" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-widest">Stock</label>
+                <input type="number" placeholder="0" value={stock} onChange={(e) => setStock(e.target.value)}
+                  className="w-full bg-slate-900/50 border border-slate-600/30 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 focus:outline-none transition-all" />
+              </div>
+              <div className="col-span-2 sm:col-span-1">
+                <label className="block text-[10px] font-semibold text-orange-400/70 mb-1 uppercase tracking-widest">Promo (GHS)</label>
+                <input type="number" placeholder="Optional" value={promoPrice} onChange={(e) => setPromoPrice(e.target.value)}
+                  className="w-full bg-slate-900/50 border border-orange-500/20 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 focus:outline-none transition-all" />
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 mt-4 pt-3 border-t border-slate-700/20">
               <button onClick={handleSaveProduct} disabled={isLoading}
-                className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg font-semibold hover:from-cyan-600 hover:to-cyan-700 disabled:opacity-50 flex items-center gap-2">
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                className="px-5 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg text-sm font-semibold hover:from-cyan-400 hover:to-blue-500 disabled:opacity-40 flex items-center gap-2 shadow-lg shadow-cyan-500/10 transition-all">
+                {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                 {productId ? 'Update' : 'Add'} Product
               </button>
               {productId && (
-                <button onClick={resetForm} className="px-6 py-2 bg-dark-700 text-dark-300 rounded-lg font-semibold hover:bg-dark-600">Cancel</button>
+                <button onClick={resetForm} className="px-4 py-2 bg-slate-800 text-slate-400 rounded-lg text-sm font-medium hover:bg-slate-700 hover:text-slate-300 border border-slate-600/30 transition-all">Cancel</button>
               )}
             </div>
           </div>
 
-          {/* Search and Bulk Stock Controls */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
-            <div className="relative flex-1 max-w-md w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" />
-              <input type="text" placeholder="Search products..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-dark-800 border border-dark-600 rounded-lg pl-10 pr-4 py-2 text-white placeholder-dark-400 focus:border-cyan-500 focus:outline-none" />
+          {/* Search & Bulk Controls */}
+          <div className="space-y-3">
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input type="text" placeholder="Filter by name..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-900/50 border border-slate-700/40 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 focus:outline-none transition-all" />
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-dark-400 text-sm">Bulk Stock:</span>
-              {['MTN', 'TELECEL', 'AIRTEL TIGO'].map(carrier => (
-                <div key={carrier} className="flex items-center gap-1">
-                  <span className={`w-2 h-2 rounded-full ${carrier === 'MTN' ? 'bg-yellow-500' : carrier === 'TELECEL' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
-                  <button onClick={() => handleBulkSetStock(carrier, 1)} className="px-2 py-1 text-xs bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/30">1</button>
-                  <button onClick={() => handleBulkSetStock(carrier, 0)} className="px-2 py-1 text-xs bg-red-500/20 text-red-400 rounded hover:bg-red-500/30">0</button>
-                </div>
-              ))}
-              <span className="text-dark-600 mx-1">|</span>
-              <span className="text-dark-400 text-sm">Shop Stock:</span>
-              <button onClick={() => handleBulkShopStock(false)} className="px-2 py-1 text-xs bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/30">Open All</button>
-              <button onClick={() => handleBulkShopStock(true)} className="px-2 py-1 text-xs bg-red-500/20 text-red-400 rounded hover:bg-red-500/30">Close All</button>
-              <span className="text-dark-600 mx-1">|</span>
-              <span className="text-dark-400 text-sm">Agents:</span>
-              <button onClick={() => handleBulkAgentVisibility(true)} className="px-2 py-1 text-xs bg-purple-500/20 text-purple-400 rounded hover:bg-purple-500/30">Show All</button>
-              <button onClick={() => handleBulkAgentVisibility(false)} className="px-2 py-1 text-xs bg-red-500/20 text-red-400 rounded hover:bg-red-500/30">Hide All</button>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {/* Carrier Stock */}
+              <div className="flex items-center gap-1 bg-slate-800/50 rounded-lg px-2.5 py-1.5 border border-slate-700/30">
+                <span className="text-[10px] font-semibold text-slate-500 uppercase mr-1">Stock</span>
+                {['MTN', 'TELECEL', 'AIRTEL TIGO'].map(carrier => (
+                  <div key={carrier} className="flex items-center gap-0.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${carrier === 'MTN' ? 'bg-yellow-400' : carrier === 'TELECEL' ? 'bg-red-400' : 'bg-blue-400'}`}></span>
+                    <button onClick={() => handleBulkSetStock(carrier, 1)} className="px-1.5 py-0.5 text-[10px] font-medium text-emerald-400 hover:bg-emerald-500/15 rounded transition-colors">1</button>
+                    <button onClick={() => handleBulkSetStock(carrier, 0)} className="px-1.5 py-0.5 text-[10px] font-medium text-red-400 hover:bg-red-500/15 rounded transition-colors">0</button>
+                  </div>
+                ))}
+              </div>
+              {/* Shop Stock */}
+              <div className="flex items-center gap-1 bg-slate-800/50 rounded-lg px-2.5 py-1.5 border border-slate-700/30">
+                <span className="text-[10px] font-semibold text-slate-500 uppercase mr-1">Shop</span>
+                <button onClick={() => handleBulkShopStock(false)} className="px-2 py-0.5 text-[10px] font-medium text-emerald-400 hover:bg-emerald-500/15 rounded transition-colors">Open</button>
+                <button onClick={() => handleBulkShopStock(true)} className="px-2 py-0.5 text-[10px] font-medium text-red-400 hover:bg-red-500/15 rounded transition-colors">Close</button>
+              </div>
+              {/* Agents */}
+              <div className="flex items-center gap-1 bg-slate-800/50 rounded-lg px-2.5 py-1.5 border border-slate-700/30">
+                <span className="text-[10px] font-semibold text-slate-500 uppercase mr-1">Agents</span>
+                <button onClick={() => handleBulkAgentVisibility(true)} className="px-2 py-0.5 text-[10px] font-medium text-purple-400 hover:bg-purple-500/15 rounded transition-colors">Show</button>
+                <button onClick={() => handleBulkAgentVisibility(false)} className="px-2 py-0.5 text-[10px] font-medium text-red-400 hover:bg-red-500/15 rounded transition-colors">Hide</button>
+              </div>
+              {/* Pricing */}
+              <div className="flex items-center gap-1 bg-slate-800/50 rounded-lg px-2.5 py-1.5 border border-slate-700/30">
+                <span className="text-[10px] font-semibold text-slate-500 uppercase mr-1">Price</span>
+                <button onClick={() => handleBulkTogglePromo(true)} className="px-2 py-0.5 text-[10px] font-medium text-orange-400 hover:bg-orange-500/15 rounded transition-colors">Promo</button>
+                <button onClick={() => handleBulkTogglePromo(false)} className="px-2 py-0.5 text-[10px] font-medium text-cyan-400 hover:bg-cyan-500/15 rounded transition-colors">Main</button>
+              </div>
             </div>
           </div>
 
           {/* Products Table */}
-          <div className="bg-dark-900/50 rounded-xl border border-dark-700 overflow-hidden">
-            <div className="overflow-x-auto max-h-96">
-              <table className="w-full">
-                <thead className="bg-dark-800 sticky top-0">
-                  <tr className="text-left text-dark-400 text-sm">
-                    <th className="px-4 py-3 font-medium">ID</th>
-                    <th className="px-4 py-3 font-medium">Name</th>
-                    <th className="px-4 py-3 font-medium">Description</th>
-                    <th className="px-4 py-3 font-medium">Price</th>
-                    <th className="px-4 py-3 font-medium">Stock</th>
-                    <th className="px-4 py-3 font-medium text-center">Shop</th>
-                    <th className="px-4 py-3 font-medium text-center">Shop Stock</th>
-                    <th className="px-4 py-3 font-medium text-center">Agent</th>
-                    <th className="px-4 py-3 font-medium text-center">Actions</th>
+          <div className="rounded-xl border border-slate-700/30 overflow-hidden bg-slate-900/30">
+            <div className="overflow-x-auto max-h-[420px]">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-800/60 sticky top-0 z-10">
+                  <tr className="text-left">
+                    <th className="px-3 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">ID</th>
+                    <th className="px-3 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Product</th>
+                    <th className="px-3 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Description</th>
+                    <th className="px-3 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Price</th>
+                    <th className="px-3 py-2.5 text-[10px] font-semibold text-orange-400/60 uppercase tracking-widest">Promo</th>
+                    <th className="px-3 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest text-center">Use Promo</th>
+                    <th className="px-3 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Stock</th>
+                    <th className="px-3 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest text-center">Shop</th>
+                    <th className="px-3 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest text-center">Shop Stock</th>
+                    <th className="px-3 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest text-center">Agent</th>
+                    <th className="px-3 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest text-center">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-800/50">
                   {isLoading ? (
-                    <tr><td colSpan="9" className="px-4 py-8 text-center text-dark-400"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></td></tr>
+                    <tr><td colSpan="11" className="px-4 py-12 text-center">
+                      <Loader2 className="w-5 h-5 animate-spin mx-auto text-slate-500" />
+                      <p className="text-slate-500 text-xs mt-2">Loading products...</p>
+                    </td></tr>
                   ) : filteredProducts.length === 0 ? (
-                    <tr><td colSpan="9" className="px-4 py-8 text-center text-dark-400">No products found</td></tr>
+                    <tr><td colSpan="11" className="px-4 py-12 text-center">
+                      <Package className="w-8 h-8 mx-auto text-slate-700 mb-2" />
+                      <p className="text-slate-500 text-xs">No products found</p>
+                    </td></tr>
                   ) : (
-                    filteredProducts.map((product) => (
-                      <tr key={product.id} className="border-t border-dark-700 hover:bg-dark-800/50">
-                        <td className="px-4 py-3 text-dark-400">#{product.id}</td>
-                        <td className="px-4 py-3">
+                    filteredProducts.map((product, idx) => (
+                      <tr key={product.id} className={`hover:bg-slate-800/30 transition-colors ${idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-800/10'}`}>
+                        <td className="px-3 py-2.5">
+                          <span className="text-slate-500 text-xs font-mono">#{product.id}</span>
+                        </td>
+                        <td className="px-3 py-2.5">
                           <div className="flex items-center gap-2">
-                            <span className={`w-2 h-2 rounded-full ${getCarrierColor(product.name)}`}></span>
-                            <span className="text-white font-medium">{product.name}</span>
+                            <span className={`w-2 h-2 rounded-full ring-2 ring-slate-900 ${getCarrierColor(product.name)}`}></span>
+                            <span className="text-white font-medium text-xs">{product.name}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-dark-300 max-w-xs truncate">{product.description}</td>
-                        <td className="px-4 py-3 text-white font-medium">GHS {product.price?.toFixed(2)}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              product.stock === 0 ? 'bg-red-500/20 text-red-400' :
-                              product.stock < 5 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'
+                        <td className="px-3 py-2.5 text-slate-400 max-w-[140px] truncate text-xs">{product.description}</td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex flex-col">
+                            <span className={`text-xs font-semibold ${product.usePromoPrice ? 'line-through text-slate-600' : 'text-white'}`}>
+                              GHS {product.price?.toFixed(2)}
+                            </span>
+                            {product.usePromoPrice && product.promoPrice != null && (
+                              <span className="text-xs font-bold text-orange-400">GHS {product.promoPrice?.toFixed(2)}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span className="text-xs text-slate-400">{product.promoPrice != null ? `GHS ${product.promoPrice?.toFixed(2)}` : <span className="text-slate-600">&mdash;</span>}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <button onClick={() => handleTogglePromo(product.id, product.usePromoPrice)}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${product.usePromoPrice ? 'bg-orange-500' : 'bg-slate-700'} ${product.promoPrice == null ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+                            disabled={product.promoPrice == null}>
+                            <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${product.usePromoPrice ? 'translate-x-[18px]' : 'translate-x-[3px]'}`}></span>
+                          </button>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`inline-flex items-center justify-center min-w-[24px] h-5 px-1.5 rounded text-[10px] font-bold ${
+                              product.stock === 0 ? 'bg-red-500/15 text-red-400 ring-1 ring-red-500/20' :
+                              product.stock < 5 ? 'bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/20' : 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20'
                             }`}>{product.stock}</span>
-                            <div className="flex gap-1">
-                              <button onClick={() => handleSetStock(product.id, 1)} className="px-1.5 py-0.5 text-xs bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/30" title="Set to 1">1</button>
-                              <button onClick={() => handleSetStock(product.id, 0)} className="px-1.5 py-0.5 text-xs bg-red-500/20 text-red-400 rounded hover:bg-red-500/30" title="Set to 0">0</button>
+                            <div className="flex gap-0.5">
+                              <button onClick={() => handleSetStock(product.id, 1)} className="w-5 h-5 flex items-center justify-center text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/15 rounded transition-colors" title="Set to 1">1</button>
+                              <button onClick={() => handleSetStock(product.id, 0)} className="w-5 h-5 flex items-center justify-center text-[10px] font-bold text-red-400 hover:bg-red-500/15 rounded transition-colors" title="Set to 0">0</button>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-3 py-2.5 text-center">
                           <button onClick={() => handleToggleShop(product.id, product.showInShop)}
-                            className={`relative w-10 h-5 rounded-full transition-colors ${product.showInShop ? 'bg-cyan-500' : 'bg-dark-600'}`}>
-                            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${product.showInShop ? 'left-5' : 'left-0.5'}`}></span>
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${product.showInShop ? 'bg-cyan-500' : 'bg-slate-700'}`}>
+                            <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${product.showInShop ? 'translate-x-[18px]' : 'translate-x-[3px]'}`}></span>
                           </button>
                         </td>
-                        <td className="px-4 py-3 text-center">
-                          {product.showInShop && (
+                        <td className="px-3 py-2.5 text-center">
+                          {product.showInShop ? (
                             <button onClick={() => handleToggleShopStock(product.id, product.shopStockClosed)}
-                              className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors ${product.shopStockClosed ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'}`}>
+                              className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ${product.shopStockClosed ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25 ring-1 ring-red-500/20' : 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 ring-1 ring-emerald-500/20'}`}>
                               {product.shopStockClosed ? 'Closed' : 'Open'}
                             </button>
-                          )}
+                          ) : <span className="text-slate-700 text-xs">&mdash;</span>}
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-3 py-2.5 text-center">
                           <button onClick={() => handleToggleAgent(product.id, product.showForAgents)}
-                            className={`relative w-10 h-5 rounded-full transition-colors ${product.showForAgents ? 'bg-purple-500' : 'bg-dark-600'}`}>
-                            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${product.showForAgents ? 'left-5' : 'left-0.5'}`}></span>
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${product.showForAgents ? 'bg-purple-500' : 'bg-slate-700'}`}>
+                            <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${product.showForAgents ? 'translate-x-[18px]' : 'translate-x-[3px]'}`}></span>
                           </button>
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-center gap-2">
-                            <button onClick={() => handleEditClick(product)} className="p-1.5 text-cyan-400 hover:bg-cyan-500/20 rounded-lg"><Edit className="w-4 h-4" /></button>
-                            <button onClick={() => handleDeleteProduct(product.id)} className="p-1.5 text-red-400 hover:bg-red-500/20 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center justify-center gap-1">
+                            <button onClick={() => handleEditClick(product)}
+                              className="w-7 h-7 flex items-center justify-center text-cyan-400 hover:bg-cyan-500/15 rounded-lg transition-colors" title="Edit">
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => handleDeleteProduct(product.id)}
+                              className="w-7 h-7 flex items-center justify-center text-red-400 hover:bg-red-500/15 rounded-lg transition-colors" title="Delete">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </td>
                       </tr>

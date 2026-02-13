@@ -183,8 +183,9 @@ const UserDashboard = () => {
     }
 
     const currentBalance = Math.abs(parseFloat(loanBalance?.loanBalance || 0));
-    const currentCartTotal = cart.reduce((total, item) => total + (item.product?.price || 0) * (item.quantity || 1), 0);
-    const newTotal = currentCartTotal + product.price;
+    const getEffectivePrice = (p) => (p.usePromoPrice && p.promoPrice != null) ? p.promoPrice : p.price;
+    const currentCartTotal = cart.reduce((total, item) => total + (getEffectivePrice(item.product || {}) || 0) * (item.quantity || 1), 0);
+    const newTotal = currentCartTotal + getEffectivePrice(product);
 
     if (newTotal > currentBalance) {
       Swal.fire({
@@ -537,7 +538,7 @@ const UserDashboard = () => {
                       <h3 className="text-lg sm:text-xl font-bold text-white mb-2">{product.description}</h3>
                       <div className="flex items-baseline gap-1 mb-3 sm:mb-4">
                         <span className="text-xs sm:text-sm text-white/70">GHS</span>
-                        <span className="text-xl sm:text-2xl font-bold text-white">{product.price}</span>
+                        <span className="text-xl sm:text-2xl font-bold text-white">{(product.usePromoPrice && product.promoPrice != null) ? product.promoPrice : product.price}</span>
                       </div>
 
                       <div className="space-y-2">
