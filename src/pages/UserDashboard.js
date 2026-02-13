@@ -47,7 +47,7 @@ const UserDashboard = () => {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const response = await axios.get(`${BASE_URL}/products`);
+      const response = await axios.get(`${BASE_URL}/products/agent-products`);
       setProducts(response.data || []);
     } catch (error) {
       console.error('Error fetching products:', error);

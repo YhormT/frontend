@@ -148,13 +148,8 @@ const ProductDialog = ({ isOpen, onClose }) => {
   };
 
   const handleBulkSetStock = async (carrier, stockValue) => {
-    const carrierProducts = products.filter(p => p.name?.toUpperCase().includes(carrier.toUpperCase()));
-    if (carrierProducts.length === 0) return;
-
     try {
-      await Promise.all(carrierProducts.map(p => 
-        axios.put(`${BASE_URL}/products/update/${p.id}`, { stock: stockValue })
-      ));
+      await axios.patch(`${BASE_URL}/products/bulk-stock-by-carrier`, { carrier, stock: stockValue });
       setProducts(products.map(p => 
         p.name?.toUpperCase().includes(carrier.toUpperCase()) ? { ...p, stock: stockValue } : p
       ));
@@ -169,20 +164,13 @@ const ProductDialog = ({ isOpen, onClose }) => {
       });
     } catch (error) {
       console.error('Error bulk updating stock:', error);
+      Swal.fire({ title: 'Error!', text: 'Failed to bulk update stock', icon: 'error', background: '#1e293b', color: '#f1f5f9' });
     }
   };
 
   const handleBulkShopStock = async (closeStock) => {
-    const shopProducts = products.filter(p => p.showInShop);
-    if (shopProducts.length === 0) {
-      Swal.fire({ title: 'No Shop Products', text: 'No products are enabled for shop', icon: 'info', background: '#1e293b', color: '#f1f5f9' });
-      return;
-    }
-
     try {
-      await Promise.all(shopProducts.map(p => 
-        axios.put(`${BASE_URL}/products/update/${p.id}`, { shopStockClosed: closeStock })
-      ));
+      await axios.patch(`${BASE_URL}/products/bulk-shop-stock`, { closeStock });
       setProducts(products.map(p => 
         p.showInShop ? { ...p, shopStockClosed: closeStock } : p
       ));
@@ -198,6 +186,44 @@ const ProductDialog = ({ isOpen, onClose }) => {
     } catch (error) {
       console.error('Error bulk updating shop stock:', error);
       Swal.fire({ title: 'Error!', text: 'Failed to update shop stock', icon: 'error', background: '#1e293b', color: '#f1f5f9' });
+    }
+  };
+
+  const handleToggleAgent = async (id, currentValue) => {
+    try {
+      await axios.put(`${BASE_URL}/products/toggle-agent/${id}`, { showForAgents: !currentValue });
+      setProducts(products.map(p => p.id === id ? { ...p, showForAgents: !currentValue } : p));
+    } catch (error) {
+      console.error('Error toggling agent visibility:', error);
+      Swal.fire({ title: 'Error!', text: 'Failed to update agent visibility', icon: 'error', background: '#1e293b', color: '#f1f5f9' });
+    }
+  };
+
+  const handleBulkAgentVisibility = async (showForAgents) => {
+    try {
+      const carrier = searchQuery.trim() || null;
+      await axios.patch(`${BASE_URL}/products/bulk-agent-visibility`, { showForAgents, carrier });
+      if (carrier) {
+        setProducts(products.map(p => 
+          p.name?.toLowerCase().includes(carrier.toLowerCase()) ? { ...p, showForAgents } : p
+        ));
+      } else {
+        setProducts(products.map(p => ({ ...p, showForAgents })));
+      }
+      Swal.fire({ 
+        title: showForAgents ? 'Agents Enabled' : 'Agents Disabled', 
+        text: showForAgents 
+          ? `Products ${carrier ? `matching "${carrier}"` : ''} now visible to agents` 
+          : `Products ${carrier ? `matching "${carrier}"` : ''} hidden from agents`, 
+        icon: 'success', 
+        background: '#1e293b', 
+        color: '#f1f5f9', 
+        timer: 1500,
+        showConfirmButton: false
+      });
+    } catch (error) {
+      console.error('Error bulk updating agent visibility:', error);
+      Swal.fire({ title: 'Error!', text: 'Failed to update agent visibility', icon: 'error', background: '#1e293b', color: '#f1f5f9' });
     }
   };
 
@@ -274,6 +300,10 @@ const ProductDialog = ({ isOpen, onClose }) => {
               <span className="text-dark-400 text-sm">Shop Stock:</span>
               <button onClick={() => handleBulkShopStock(false)} className="px-2 py-1 text-xs bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/30">Open All</button>
               <button onClick={() => handleBulkShopStock(true)} className="px-2 py-1 text-xs bg-red-500/20 text-red-400 rounded hover:bg-red-500/30">Close All</button>
+              <span className="text-dark-600 mx-1">|</span>
+              <span className="text-dark-400 text-sm">Agents:</span>
+              <button onClick={() => handleBulkAgentVisibility(true)} className="px-2 py-1 text-xs bg-purple-500/20 text-purple-400 rounded hover:bg-purple-500/30">Show All</button>
+              <button onClick={() => handleBulkAgentVisibility(false)} className="px-2 py-1 text-xs bg-red-500/20 text-red-400 rounded hover:bg-red-500/30">Hide All</button>
             </div>
           </div>
 
@@ -290,14 +320,15 @@ const ProductDialog = ({ isOpen, onClose }) => {
                     <th className="px-4 py-3 font-medium">Stock</th>
                     <th className="px-4 py-3 font-medium text-center">Shop</th>
                     <th className="px-4 py-3 font-medium text-center">Shop Stock</th>
+                    <th className="px-4 py-3 font-medium text-center">Agent</th>
                     <th className="px-4 py-3 font-medium text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading ? (
-                    <tr><td colSpan="8" className="px-4 py-8 text-center text-dark-400"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></td></tr>
+                    <tr><td colSpan="9" className="px-4 py-8 text-center text-dark-400"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></td></tr>
                   ) : filteredProducts.length === 0 ? (
-                    <tr><td colSpan="8" className="px-4 py-8 text-center text-dark-400">No products found</td></tr>
+                    <tr><td colSpan="9" className="px-4 py-8 text-center text-dark-400">No products found</td></tr>
                   ) : (
                     filteredProducts.map((product) => (
                       <tr key={product.id} className="border-t border-dark-700 hover:bg-dark-800/50">
@@ -335,6 +366,12 @@ const ProductDialog = ({ isOpen, onClose }) => {
                               {product.shopStockClosed ? 'Closed' : 'Open'}
                             </button>
                           )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button onClick={() => handleToggleAgent(product.id, product.showForAgents)}
+                            className={`relative w-10 h-5 rounded-full transition-colors ${product.showForAgents ? 'bg-purple-500' : 'bg-dark-600'}`}>
+                            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${product.showForAgents ? 'left-5' : 'left-0.5'}`}></span>
+                          </button>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-2">
