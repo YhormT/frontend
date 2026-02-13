@@ -11,7 +11,8 @@ const Sidebar = ({
   onOpenTransactions,
   onOpenUploadExcel,
   onOpenPasteOrders,
-  onOpenStorefront
+  onOpenStorefront,
+  isSuspended = false
 }) => {
   const navigate = useNavigate();
 
@@ -58,15 +59,16 @@ const Sidebar = ({
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-4">
+          <nav className={`flex-1 overflow-y-auto p-4 ${isSuspended ? 'opacity-40 pointer-events-none' : ''}`}>
             <div className="space-y-2">
               {/* Home */}
               <button
+                disabled={isSuspended}
                 onClick={() => {
                   handleCategorySelect(null);
                   setIsOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${isSuspended ? 'cursor-not-allowed' : ''} ${
                   !selectedCategory
                     ? "bg-gradient-to-r from-cyan-500/10 to-cyan-500/5 text-cyan-400 border border-cyan-500/20"
                     : "text-dark-300 hover:bg-dark-800 hover:text-white"
@@ -150,11 +152,12 @@ const Sidebar = ({
               {/* Profile */}
               <div className="pt-6 border-t border-dark-700 mt-6">
                 <button
+                  disabled={isSuspended}
                   onClick={() => {
                     navigate("/profile");
                     setIsOpen(false);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-dark-300 hover:bg-dark-800 hover:text-white transition-all"
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-dark-300 hover:bg-dark-800 hover:text-white transition-all ${isSuspended ? 'cursor-not-allowed' : ''}`}
                 >
                   <User className="w-5 h-5" />
                   <span>Profile</span>

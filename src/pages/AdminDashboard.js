@@ -301,6 +301,17 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleToggleSuspend = async (user) => {
+    const newStatus = !user.isSuspended;
+    try {
+      await axios.put(`${BASE_URL}/api/users/${user.id}/suspend`, { isSuspended: newStatus });
+      Swal.fire({ icon: 'success', title: newStatus ? 'Suspended!' : 'Unsuspended!', text: newStatus ? `${user.name} has been suspended.` : `${user.name} has been unsuspended.`, timer: 1500, showConfirmButton: false, background: '#1e293b', color: '#f1f5f9' });
+      fetchUsers();
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'Failed!', text: 'Could not update suspension status.', background: '#1e293b', color: '#f1f5f9' });
+    }
+  };
+
   const handleDeleteUser = async (id) => {
     const result = await Swal.fire({
       title: 'Are you sure?', text: 'This action cannot be undone!', icon: 'warning',
@@ -894,7 +905,12 @@ const AdminDashboard = () => {
                         {currentUsers.map((user) => (
                           <tr key={user.id} className="border-b border-dark-700/50 hover:bg-dark-800/50">
                             <td className="py-3 text-dark-400">#{user.id}</td>
-                            <td className="py-3 text-white font-medium">{user.name}</td>
+                            <td className="py-3 text-white font-medium">
+                              <div className="flex items-center gap-2">
+                                {user.name}
+                                {user.isSuspended && <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px] font-bold">SUSPENDED</span>}
+                              </div>
+                            </td>
                             <td className="py-3 text-dark-300">{user.phone}</td>
                             <td className="py-3">
                               <span className="px-2 py-1 bg-cyan-500/10 text-cyan-400 rounded-full text-xs font-medium">{user.role}</span>
@@ -919,6 +935,11 @@ const AdminDashboard = () => {
                                 <button onClick={() => openEditUserModal(user)} className="p-1.5 text-cyan-400 hover:bg-cyan-500/20 rounded-lg"><Edit className="w-4 h-4" /></button>
                                 <button onClick={() => handleDeleteUser(user.id)} className="p-1.5 text-red-400 hover:bg-red-500/20 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                                 <button onClick={() => openRefundModal(user)} className="p-1.5 text-emerald-400 hover:bg-emerald-500/20 rounded-lg"><Wallet className="w-4 h-4" /></button>
+                                {user.role !== 'ADMIN' && (
+                                  <button onClick={() => handleToggleSuspend(user)} className={`p-1.5 rounded-lg ${user.isSuspended ? 'text-emerald-400 hover:bg-emerald-500/20' : 'text-orange-400 hover:bg-orange-500/20'}`} title={user.isSuspended ? 'Unsuspend' : 'Suspend'}>
+                                    {user.isSuspended ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>

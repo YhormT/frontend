@@ -62,6 +62,7 @@ const Login = () => {
       localStorage.setItem("email", user.email);
       localStorage.setItem("userId", user.id);
       localStorage.setItem("isLoggedIn", true);
+      localStorage.setItem("isSuspended", user.isSuspended ? "true" : "false");
 
       redirectToDashboard(user.role);
     } catch (err) {

@@ -32,6 +32,7 @@ const UserDashboard = () => {
   const [showUploadExcel, setShowUploadExcel] = useState(false);
   const [showPasteOrders, setShowPasteOrders] = useState(false);
   const [showStorefront, setShowStorefront] = useState(false);
+  const [isSuspended, setIsSuspended] = useState(localStorage.getItem('isSuspended') === 'true');
 
   const userName = localStorage.getItem('name') || 'User';
 
@@ -90,6 +91,15 @@ const UserDashboard = () => {
     const role = localStorage.getItem('role');
     if (role !== 'USER') navigate('/login');
     fetchData();
+    // Check suspension status from server
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      axios.get(`${BASE_URL}/api/users/${userId}`).then(res => {
+        const suspended = res.data?.isSuspended === true;
+        setIsSuspended(suspended);
+        localStorage.setItem('isSuspended', suspended ? 'true' : 'false');
+      }).catch(() => {});
+    }
     const interval = setInterval(fetchLoanBalance, 60000);
     return () => clearInterval(interval);
   }, [fetchData, fetchLoanBalance, navigate]);
@@ -283,53 +293,42 @@ const UserDashboard = () => {
   const submitCart = async () => {
     if (isSubmitting) return;
 
-    try {
-      setIsSubmitting(true);
-      const userId = parseInt(localStorage.getItem('userId'), 10);
-      const totalAmount = cartTotal;
-      const freshBalance = Math.abs(parseFloat(loanBalance?.loanBalance || 0));
+    const userId = parseInt(localStorage.getItem('userId'), 10);
+    const totalAmount = cartTotal;
+    const freshBalance = Math.abs(parseFloat(loanBalance?.loanBalance || 0));
 
-      if (totalAmount > freshBalance) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Insufficient Funds',
-          text: `Your wallet balance is GHS ${freshBalance.toFixed(2)}, but cart total is GHS ${totalAmount.toFixed(2)}.`,
-          background: '#1e293b',
-          color: '#f1f5f9'
-        });
-        return;
-      }
-
-      await axios.post(`${BASE_URL}/order/submit`, {
-        userId,
-        expectedBalance: freshBalance,
-        totalAmount
-      }, {
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-
+    if (totalAmount > freshBalance) {
       Swal.fire({
-        icon: 'success',
-        title: 'Order Submitted!',
-        text: 'Your order has been placed successfully.',
+        icon: 'warning',
+        title: 'Insufficient Funds',
+        text: `Your wallet balance is GHS ${freshBalance.toFixed(2)}, but cart total is GHS ${totalAmount.toFixed(2)}.`,
         background: '#1e293b',
         color: '#f1f5f9'
       });
+      return;
+    }
 
+    setIsSubmitting(true);
+    setShowCart(false);
+    setCart([]);
+
+    axios.post(`${BASE_URL}/order/submit`, {
+      userId,
+      expectedBalance: freshBalance,
+      totalAmount
+    }, {
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` }
+    }).then(() => {
+      Swal.fire({ icon: 'success', title: 'Order Submitted!', text: 'Your order has been placed successfully.', timer: 1500, showConfirmButton: false, background: '#1e293b', color: '#f1f5f9' });
       fetchCart();
       fetchLoanBalance();
-      setShowCart(false);
-    } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Order Failed',
-        text: error.response?.data?.message || 'Failed to submit order.',
-        background: '#1e293b',
-        color: '#f1f5f9'
-      });
-    } finally {
+    }).catch((error) => {
+      Swal.fire({ icon: 'error', title: 'Order Failed', text: error.response?.data?.message || 'Failed to submit order.', background: '#1e293b', color: '#f1f5f9' });
+      fetchCart();
+      fetchLoanBalance();
+    }).finally(() => {
       setIsSubmitting(false);
-    }
+    });
   };
 
   const logoutUser = async () => {
@@ -358,6 +357,7 @@ const UserDashboard = () => {
         onOpenUploadExcel={() => setShowUploadExcel(true)}
         onOpenPasteOrders={() => setShowPasteOrders(true)}
         onOpenStorefront={() => setShowStorefront(true)}
+        isSuspended={isSuspended}
       />
 
       {/* Main Content */}
@@ -424,6 +424,20 @@ const UserDashboard = () => {
 
         {/* Content */}
         <main className="p-4 sm:p-6 lg:p-8">
+          {/* Suspension Banner */}
+          {isSuspended && (
+            <div className="flex flex-col items-center justify-center py-20 sm:py-32">
+              <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-8 sm:p-12 text-center max-w-md mx-auto">
+                <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <X className="w-8 h-8 text-red-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-red-400 mb-2">Account Suspended</h2>
+                <p className="text-dark-400 text-sm">Your account has been suspended. Please contact the administrator for assistance.</p>
+              </div>
+            </div>
+          )}
+
+          {!isSuspended && <>
           {/* Stats - Hidden on mobile */}
           <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
             <div className="bg-dark-800/50 backdrop-blur rounded-xl sm:rounded-2xl border border-dark-700 p-3 sm:p-4">
@@ -575,6 +589,7 @@ const UserDashboard = () => {
               })}
             </div>
           )}
+          </>}
         </main>
       </div>
 
