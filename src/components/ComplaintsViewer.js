@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquareWarning, X, CheckCircle, Clock, AlertCircle, Phone, Loader2, RefreshCw, Trash2, MessageCircle } from 'lucide-react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
@@ -12,73 +12,91 @@ const ComplaintsViewer = ({ isOpen, onClose }) => {
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [adminNotes, setAdminNotes] = useState('');
+  const statusFilterRef = useRef(statusFilter);
+  const socketRef = useRef(null);
 
-  const fetchComplaints = useCallback(async (retryCount = 0) => {
+  // Keep ref in sync so fetch always uses latest filter
+  useEffect(() => {
+    statusFilterRef.current = statusFilter;
+  }, [statusFilter]);
+
+  const fetchComplaints = async () => {
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+    if (!token || role?.toUpperCase() !== 'ADMIN') return;
+
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const statusParam = statusFilter !== 'all' ? `?status=${statusFilter}` : '';
+      const currentFilter = statusFilterRef.current;
+      const statusParam = currentFilter !== 'all' ? `?status=${currentFilter}` : '';
       const res = await axios.get(`${BASE_URL}/api/complaints${statusParam}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setComplaints(res.data.data || []);
     } catch (err) {
       console.error('Error fetching complaints:', err);
-      if (retryCount < 1) {
-        await new Promise(r => setTimeout(r, 1500));
-        return fetchComplaints(retryCount + 1);
-      }
+      setComplaints([]);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  };
 
-  const fetchPendingCount = useCallback(async () => {
+  const fetchPendingCount = async () => {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
-    // Don't fetch if no token or not admin
     if (!token || role?.toUpperCase() !== 'ADMIN') return;
-    
+
     try {
       const res = await axios.get(`${BASE_URL}/api/complaints/pending/count`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPendingCount(res.data.data?.count || 0);
     } catch (err) {
-      // Silently fail for auth errors - token may be expired
-      // User will need to re-login to fix this
+      // Silently fail - token may be expired
     }
-  }, []);
+  };
 
+  // Pending count polling (always runs for admin)
   useEffect(() => {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
-    // Only fetch if token exists and user is admin
-    if (!token || role?.toUpperCase() !== 'ADMIN') {
-      console.log('ComplaintsViewer: Skipping fetch - not admin or no token. Role:', role);
-      return;
-    }
-    
+    if (!token || role?.toUpperCase() !== 'ADMIN') return;
+
     fetchPendingCount();
     const interval = setInterval(fetchPendingCount, 30000);
     return () => clearInterval(interval);
-  }, [fetchPendingCount]);
+  }, []);
 
+  // Fetch complaints every time modal opens or filter changes
   useEffect(() => {
-    const role = localStorage.getItem('role');
-    if (isOpen && role?.toUpperCase() === 'ADMIN') fetchComplaints();
-  }, [isOpen, fetchComplaints]);
+    if (isOpen) {
+      fetchComplaints();
+    }
+  }, [isOpen, statusFilter]);
 
-  // Real-time complaint notifications via socket
+  // Socket: single persistent connection while modal is open
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      return;
+    }
+
     const socket = socketIO(BASE_URL, { transports: ['websocket', 'polling'] });
+    socketRef.current = socket;
+
     socket.on('new-complaint', () => {
       fetchComplaints();
       fetchPendingCount();
     });
-    return () => socket.disconnect();
-  }, [isOpen, fetchComplaints, fetchPendingCount]);
+
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [isOpen]);
 
   const handleUpdateStatus = async (id, newStatus) => {
     try {
