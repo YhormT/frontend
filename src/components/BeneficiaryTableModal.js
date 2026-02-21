@@ -8,9 +8,51 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
     minutes: '',
     sms: '',
     dataSize: '',
-    processingReport: '',
+    processingReport: 'Validating...',
     uploadedDateTime: ''
   });
+
+  // Format date as "20th, Feb. 2026 01:11PM"
+  const formatDate = (dateInput) => {
+    if (!dateInput) return '-';
+    const date = new Date(dateInput);
+    const day = date.getDate();
+    const suffix = (day === 1 || day === 21 || day === 31) ? 'st' 
+      : (day === 2 || day === 22) ? 'nd' 
+      : (day === 3 || day === 23) ? 'rd' : 'th';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    let hours = date.getHours();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${day}${suffix}, ${month}. ${year} ${hours}:${minutes}${ampm}`;
+  };
+
+  // Convert phone number: if starts with 0, replace with 233
+  const formatPhoneNumber = (value) => {
+    const digits = value.replace(/\D/g, '');
+    if (digits.startsWith('0')) {
+      return '233' + digits.slice(1);
+    }
+    return digits;
+  };
+
+  const handlePhoneChange = (e) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setFormData(prev => ({ ...prev, beneficiaryNumber: formatted }));
+  };
+
+  const handleMinutesChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '');
+    setFormData(prev => ({ ...prev, minutes: value }));
+  };
+
+  const handleSmsChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '');
+    setFormData(prev => ({ ...prev, sms: value }));
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -23,8 +65,12 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
     
     const newEntry = {
       id: Date.now(),
-      ...formData,
-      uploadedDateTime: formData.uploadedDateTime || new Date().toLocaleString()
+      beneficiaryNumber: formData.beneficiaryNumber,
+      minutes: formData.minutes ? `${formData.minutes} Minutes` : '0 Minutes',
+      sms: formData.sms ? `${formData.sms} SMS` : '0 SMS',
+      dataSize: formData.dataSize || '-',
+      processingReport: formData.processingReport || 'Validating...',
+      uploadedDateTime: formData.uploadedDateTime || new Date().toISOString()
     };
     
     setEntries(prev => [newEntry, ...prev]);
@@ -33,7 +79,7 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
       minutes: '',
       sms: '',
       dataSize: '',
-      processingReport: '',
+      processingReport: 'Validating...',
       uploadedDateTime: ''
     });
   };
@@ -42,13 +88,16 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
     setEntries(prev => prev.filter(entry => entry.id !== id));
   };
 
+  // Generate data size options 1GB to 50GB
+  const dataSizeOptions = Array.from({ length: 50 }, (_, i) => `${i + 1} GB`);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-4 flex items-center justify-between">
+        <div className="bg-gray-800 p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Table2 className="w-6 h-6 text-white" />
             <h2 className="text-lg font-bold text-white">Beneficiary Records</h2>
@@ -59,62 +108,64 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
         </div>
 
         {/* Input Form */}
-        <form onSubmit={handleSubmit} className="p-4 bg-gray-50 border-b border-gray-200">
+        <form onSubmit={handleSubmit} className="p-4 bg-gray-50 border-b border-gray-300">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Beneficiary Number</label>
               <input
                 type="text"
-                name="beneficiaryNumber"
                 value={formData.beneficiaryNumber}
-                onChange={handleInputChange}
-                placeholder="233XXXXXXXXX"
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                onChange={handlePhoneChange}
+                placeholder="0244450003"
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:border-gray-500 focus:outline-none"
               />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Minutes</label>
               <input
                 type="text"
-                name="minutes"
                 value={formData.minutes}
-                onChange={handleInputChange}
-                placeholder="0 Minutes"
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                onChange={handleMinutesChange}
+                placeholder="0"
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:border-gray-500 focus:outline-none"
               />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">SMS</label>
               <input
                 type="text"
-                name="sms"
                 value={formData.sms}
-                onChange={handleInputChange}
-                placeholder="0 SMS"
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                onChange={handleSmsChange}
+                placeholder="0"
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:border-gray-500 focus:outline-none"
               />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Data Size</label>
-              <input
-                type="text"
+              <select
                 name="dataSize"
                 value={formData.dataSize}
                 onChange={handleInputChange}
-                placeholder="1 GB"
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
-              />
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+              >
+                <option value="">Select</option>
+                {dataSizeOptions.map(size => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Processing Report</label>
-              <input
-                type="text"
+              <select
                 name="processingReport"
                 value={formData.processingReport}
                 onChange={handleInputChange}
-                placeholder="Validating..."
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
-              />
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+              >
+                <option value="Validating...">Validating...</option>
+                <option value="Failed">Failed</option>
+                <option value="Yes">Yes</option>
+              </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Date & Time</label>
@@ -123,14 +174,14 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
                 name="uploadedDateTime"
                 value={formData.uploadedDateTime}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
               />
             </div>
           </div>
           <div className="mt-3 flex justify-end">
             <button
               type="submit"
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors"
             >
               <Plus className="w-4 h-4" />
               Add Entry
@@ -140,55 +191,39 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
 
         {/* Table */}
         <div className="flex-1 overflow-auto">
-          <table className="w-full">
+          <table className="w-full border-collapse">
             <thead className="bg-gray-100 sticky top-0">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">Beneficiary Number</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">Minutes</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">SMS</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">Data Size</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">Processing Report</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">Uploaded Date & Time</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b border-gray-200">Action</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">Beneficiary Number</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">Minutes</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">SMS</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">Data Size</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">Processing Report</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">Uploaded Date & Time</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {entries.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-4 py-12 text-center text-gray-400">
+                  <td colSpan="7" className="px-4 py-12 text-center text-gray-400 border-b border-gray-200">
                     <Table2 className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                     <p>No entries yet. Add a beneficiary record above.</p>
                   </td>
                 </tr>
               ) : (
-                entries.map((entry, index) => (
-                  <tr key={entry.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-4 py-3 text-sm text-gray-800 font-medium">
-                      <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded">
-                        {entry.beneficiaryNumber}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{entry.minutes || '0 Minutes'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{entry.sms || '0 SMS'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{entry.dataSize || '-'}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        entry.processingReport?.toLowerCase().includes('yes') || entry.processingReport?.toLowerCase().includes('success')
-                          ? 'bg-green-100 text-green-700'
-                          : entry.processingReport?.toLowerCase().includes('validating')
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {entry.processingReport || 'Validating...'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {entry.uploadedDateTime ? new Date(entry.uploadedDateTime).toLocaleString() : '-'}
-                    </td>
-                    <td className="px-4 py-3 text-center">
+                entries.map((entry) => (
+                  <tr key={entry.id} className="bg-white hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200">{entry.beneficiaryNumber}</td>
+                    <td className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200">{entry.minutes}</td>
+                    <td className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200">{entry.sms}</td>
+                    <td className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200">{entry.dataSize}</td>
+                    <td className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200">{entry.processingReport}</td>
+                    <td className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200">{formatDate(entry.uploadedDateTime)}</td>
+                    <td className="px-4 py-3 text-center border-b border-gray-200">
                       <button
                         onClick={() => handleDelete(entry.id)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                         title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -203,11 +238,11 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
 
         {/* Footer */}
         {entries.length > 0 && (
-          <div className="p-3 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+          <div className="p-3 bg-gray-50 border-t border-gray-300 flex justify-between items-center">
             <span className="text-sm text-gray-500">{entries.length} record(s)</span>
             <button
               onClick={() => setEntries([])}
-              className="text-sm text-red-500 hover:text-red-600 font-medium"
+              className="text-sm text-gray-600 hover:text-gray-800 font-medium"
             >
               Clear All
             </button>
