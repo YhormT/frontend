@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Swal from 'sweetalert2';
-import { Menu, X, Users, Package, ShoppingCart, Bell, RefreshCw, Loader2, Search, Plus, Edit, Trash2, CheckCircle, XCircle, BarChart3, Wallet, User, LogOut, RotateCcw, Eye, EyeOff, Save, Banknote, DollarSign } from 'lucide-react';
+import { Menu, X, Users, Package, ShoppingCart, Bell, RefreshCw, Loader2, Search, Plus, Edit, Trash2, CheckCircle, XCircle, BarChart3, Wallet, User, LogOut, RotateCcw, Eye, EyeOff, Save, Banknote, DollarSign, Table2 } from 'lucide-react';
 import BASE_URL from '../endpoints/endpoints';
 import { io as socketIO } from 'socket.io-client';
 import ProductDialog from '../components/ProductDialog';
@@ -13,6 +13,7 @@ import TopupsOrdered from '../components/TopupsOrdered';
 import OrderTable from '../components/OrderTable';
 import AgentCommissionModal from '../components/AgentCommissionModal';
 import PaymentMessagesModal from '../components/PaymentMessagesModal';
+import BeneficiaryTableModal from '../components/BeneficiaryTableModal';
 
 // Notification sound
 const notificationSound = new Audio('/notification-sound.mp3');
@@ -80,6 +81,7 @@ const AdminDashboard = () => {
   const [showTopupsModal, setShowTopupsModal] = useState(false);
   const [showCommissionModal, setShowCommissionModal] = useState(false);
   const [showPaymentMessagesModal, setShowPaymentMessagesModal] = useState(false);
+  const [showBeneficiaryModal, setShowBeneficiaryModal] = useState(false);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -551,6 +553,9 @@ const AdminDashboard = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2 sm:gap-3">
+                <button onClick={() => setShowBeneficiaryModal(true)} className="p-2 bg-dark-800 rounded-xl hover:bg-dark-700" title="Beneficiary Records">
+                  <Table2 className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+                </button>
                 <button onClick={fetchData} className="p-2 bg-dark-800 rounded-xl hover:bg-dark-700">
                   <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 text-dark-400 ${isLoading ? 'animate-spin' : ''}`} />
                 </button>
@@ -1098,6 +1103,9 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Beneficiary Table Modal */}
+      <BeneficiaryTableModal isOpen={showBeneficiaryModal} onClose={() => setShowBeneficiaryModal(false)} />
     </div>
   );
 };

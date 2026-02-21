@@ -439,7 +439,7 @@ const Landing = () => {
               <ul className="space-y-2.5">
                 <li className="flex items-center gap-2.5 text-slate-400 text-sm">
                   <Phone className="w-4 h-4 text-blue-400" />
-                  +233 59 631 6991
+                  +233 24-883-0004
                 </li>
                 <li className="flex items-center gap-2.5 text-slate-400 text-sm">
                   <Mail className="w-4 h-4 text-blue-400" />
@@ -617,7 +617,7 @@ const Landing = () => {
                 <p className="mb-2">For inquiries, complaints, or refund-related issues, contact us via:</p>
                 <ul className="list-disc list-inside space-y-1 ml-4">
                   <li>Website: <a href="https://kelishub.vercel.app/" className="text-blue-500 underline">https://kelishub.vercel.app/</a></li>
-                  <li>Customer Support: <span className="text-blue-600">+233596316991</span></li>
+                  <li>Customer Support: <span className="text-blue-600">+23324883004</span></li>
                   <li>Complaints: <span className="text-blue-600">+23324883004</span> (WhatsApp only)</li>
                 </ul>
               </section>
@@ -716,7 +716,7 @@ const Landing = () => {
                 <h3 className="font-semibold text-lg text-gray-800 mb-2">9. Contact Us</h3>
                 <ul className="list-disc list-inside space-y-1">
                   <li>Email: <a href="mailto:kelisdata22@gmail.com" className="text-blue-500 underline">kelisdata22@gmail.com</a></li>
-                  <li>Phone: <span className="text-blue-600">0244450003</span></li>
+                  <li>Phone: <span className="text-blue-600"> 0248830004</span></li>
                 </ul>
               </section>
             </div>

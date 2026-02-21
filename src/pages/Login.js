@@ -548,7 +548,7 @@ const Login = () => {
                 <h3 className="font-semibold text-lg text-gray-800 mb-2">9. Contact Us</h3>
                 <ul className="list-disc list-inside space-y-1">
                   <li>Email: <a href="mailto:kelisdata22@gmail.com" className="text-blue-500 underline">kelisdata22@gmail.com</a></li>
-                  <li>Phone: <span className="text-blue-600">0244450003</span></li>
+                  <li>Phone: <span className="text-blue-600"> 0248830004</span></li>
                 </ul>
               </section>
             </div>
@@ -612,7 +612,7 @@ const Login = () => {
                 <ul className="list-disc list-inside space-y-1">
                   <li><strong>Timing:</strong> Refund requests are processed on <strong>Sundays only</strong>.</li>
                   <li><strong>Required Information:</strong> You must provide your Order ID, data size, mobile number, and a brief description of the issue.</li>
-                  <li><strong>Contact:</strong> Submit your request via WhatsApp at <span className="text-blue-600">0244450003</span> or email <a href="mailto:kelisdata22@gmail.com" className="text-blue-500 underline">kelisdata22@gmail.com</a>.</li>
+                  <li><strong>Contact:</strong> Submit your request via WhatsApp at <span className="text-blue-600">0248830004</span> or email <a href="mailto:kelisdata22@gmail.com" className="text-blue-500 underline">kelisdata22@gmail.com</a>.</li>
                   <li><strong>Processing Time:</strong> Approved refunds will be processed within 3-5 business days.</li>
                 </ul>
               </section>
@@ -640,7 +640,7 @@ const Login = () => {
                 <p>For refund inquiries or assistance:</p>
                 <ul className="list-disc list-inside space-y-1">
                   <li>Email: <a href="mailto:kelisdata22@gmail.com" className="text-blue-500 underline">kelisdata22@gmail.com</a></li>
-                  <li>WhatsApp: <span className="text-blue-600">0244450003</span></li>
+                  <li>WhatsApp: <span className="text-blue-600">0248830004</span></li>
                 </ul>
               </section>
             </div>
@@ -688,7 +688,7 @@ const Login = () => {
 
               <section>
                 <h3 className="font-semibold text-lg text-gray-800 mb-2">5. What if I don't receive my data bundle?</h3>
-                <p>If you don't receive your data within 15 minutes, please contact our support team via WhatsApp at 0244450003 with your Order ID and payment confirmation.</p>
+                <p>If you don't receive your data within 15 minutes, please contact our support team via WhatsApp at 0248830004 with your Order ID and payment confirmation.</p>
               </section>
 
               <section>
