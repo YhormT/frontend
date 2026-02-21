@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Trash2, Table2 } from 'lucide-react';
+import { X, Plus, Table2 } from 'lucide-react';
 
 const BeneficiaryTableModal = ({ isOpen, onClose }) => {
   const [entries, setEntries] = useState([]);
@@ -71,7 +71,7 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
       sms: formData.sms ? `${formData.sms} SMS` : '0 SMS',
       dataSize: formData.dataSize || '-',
       processingReport: formData.processingReport || 'Validating...',
-      failureReason: formData.failureReason || '-',
+      failureReason: formData.failureReason || '',
       uploadedDateTime: formData.uploadedDateTime || new Date().toISOString()
     };
     
@@ -85,10 +85,6 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
       failureReason: '',
       uploadedDateTime: ''
     });
-  };
-
-  const handleDelete = (id) => {
-    setEntries(prev => prev.filter(entry => entry.id !== id));
   };
 
   // Generate data size options 1GB to 50GB
@@ -205,23 +201,22 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
 
         {/* Table */}
         <div className="flex-1 overflow-auto">
-          <table className="w-full border-collapse border border-gray-300">
+          <table className="w-full border-collapse border border-gray-300" style={{fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'}}>
             <thead className="bg-gray-200 sticky top-0">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">Beneficiary Number</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">Minutes</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">SMS</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">Data Size</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">Processing Report</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">Failure Reason</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">Uploaded Date & Time</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">Action</th>
+                <th className="px-3 py-2 text-left text-xs font-normal text-gray-700 border border-gray-300">Beneficiary Number</th>
+                <th className="px-3 py-2 text-left text-xs font-normal text-gray-700 border border-gray-300">Minutes</th>
+                <th className="px-3 py-2 text-left text-xs font-normal text-gray-700 border border-gray-300">SMS</th>
+                <th className="px-3 py-2 text-left text-xs font-normal text-gray-700 border border-gray-300">Data Size</th>
+                <th className="px-3 py-2 text-left text-xs font-normal text-gray-700 border border-gray-300">Processing Report</th>
+                <th className="px-3 py-2 text-left text-xs font-normal text-gray-700 border border-gray-300">Failure Reason</th>
+                <th className="px-3 py-2 text-left text-xs font-normal text-gray-700 border border-gray-300">Uploaded Date & Time</th>
               </tr>
             </thead>
             <tbody>
               {entries.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-4 py-12 text-center text-gray-400 border border-gray-300">
+                  <td colSpan="7" className="px-4 py-12 text-center text-gray-400 border border-gray-300">
                     <Table2 className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                     <p>No entries yet. Add a beneficiary record above.</p>
                   </td>
@@ -229,22 +224,13 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
               ) : (
                 entries.map((entry, index) => (
                   <tr key={entry.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
-                    <td className="px-4 py-3 text-sm text-gray-800 border border-gray-300">{entry.beneficiaryNumber}</td>
-                    <td className="px-4 py-3 text-sm text-gray-800 border border-gray-300">{entry.minutes}</td>
-                    <td className="px-4 py-3 text-sm text-gray-800 border border-gray-300">{entry.sms}</td>
-                    <td className="px-4 py-3 text-sm text-gray-800 border border-gray-300">{entry.dataSize}</td>
-                    <td className="px-4 py-3 text-sm text-gray-800 border border-gray-300">{entry.processingReport}</td>
-                    <td className="px-4 py-3 text-sm text-gray-800 border border-gray-300">{entry.failureReason}</td>
-                    <td className="px-4 py-3 text-sm text-gray-800 border border-gray-300">{formatDate(entry.uploadedDateTime)}</td>
-                    <td className="px-4 py-3 text-center border border-gray-300">
-                      <button
-                        onClick={() => handleDelete(entry.id)}
-                        className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
+                    <td className="px-3 py-2 text-sm font-normal text-gray-800 border border-gray-300">{entry.beneficiaryNumber}</td>
+                    <td className="px-3 py-2 text-sm font-normal text-gray-800 border border-gray-300">{entry.minutes}</td>
+                    <td className="px-3 py-2 text-sm font-normal text-gray-800 border border-gray-300">{entry.sms}</td>
+                    <td className="px-3 py-2 text-sm font-normal text-gray-800 border border-gray-300">{entry.dataSize}</td>
+                    <td className="px-3 py-2 text-sm font-normal text-gray-800 border border-gray-300">{entry.processingReport}</td>
+                    <td className="px-3 py-2 text-sm font-normal text-gray-800 border border-gray-300">{entry.failureReason}</td>
+                    <td className="px-3 py-2 text-sm font-normal text-gray-800 border border-gray-300">{formatDate(entry.uploadedDateTime)}</td>
                   </tr>
                 ))
               )}
