@@ -9,6 +9,7 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
     sms: '',
     dataSize: '',
     processingReport: 'Validating...',
+    failureReason: '',
     uploadedDateTime: ''
   });
 
@@ -70,6 +71,7 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
       sms: formData.sms ? `${formData.sms} SMS` : '0 SMS',
       dataSize: formData.dataSize || '-',
       processingReport: formData.processingReport || 'Validating...',
+      failureReason: formData.failureReason || '-',
       uploadedDateTime: formData.uploadedDateTime || new Date().toISOString()
     };
     
@@ -80,6 +82,7 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
       sms: '',
       dataSize: '',
       processingReport: 'Validating...',
+      failureReason: '',
       uploadedDateTime: ''
     });
   };
@@ -109,7 +112,7 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
 
         {/* Input Form */}
         <form onSubmit={handleSubmit} className="p-4 bg-gray-50 border-b border-gray-300">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Beneficiary Number</label>
               <input
@@ -168,6 +171,17 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
               </select>
             </div>
             <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Failure Reason</label>
+              <input
+                type="text"
+                name="failureReason"
+                value={formData.failureReason}
+                onChange={handleInputChange}
+                placeholder="N/A"
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:border-gray-500 focus:outline-none"
+              />
+            </div>
+            <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Date & Time</label>
               <input
                 type="datetime-local"
@@ -191,36 +205,38 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
 
         {/* Table */}
         <div className="flex-1 overflow-auto">
-          <table className="w-full border-collapse">
-            <thead className="bg-gray-100 sticky top-0">
+          <table className="w-full border-collapse border border-gray-300">
+            <thead className="bg-gray-200 sticky top-0">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">Beneficiary Number</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">Minutes</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">SMS</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">Data Size</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">Processing Report</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">Uploaded Date & Time</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-300">Action</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">Beneficiary Number</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">Minutes</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">SMS</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">Data Size</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">Processing Report</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">Failure Reason</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">Uploaded Date & Time</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border border-gray-300">Action</th>
               </tr>
             </thead>
             <tbody>
               {entries.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-4 py-12 text-center text-gray-400 border-b border-gray-200">
+                  <td colSpan="8" className="px-4 py-12 text-center text-gray-400 border border-gray-300">
                     <Table2 className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                     <p>No entries yet. Add a beneficiary record above.</p>
                   </td>
                 </tr>
               ) : (
-                entries.map((entry) => (
-                  <tr key={entry.id} className="bg-white hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200">{entry.beneficiaryNumber}</td>
-                    <td className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200">{entry.minutes}</td>
-                    <td className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200">{entry.sms}</td>
-                    <td className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200">{entry.dataSize}</td>
-                    <td className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200">{entry.processingReport}</td>
-                    <td className="px-4 py-3 text-sm text-gray-800 border-b border-gray-200">{formatDate(entry.uploadedDateTime)}</td>
-                    <td className="px-4 py-3 text-center border-b border-gray-200">
+                entries.map((entry, index) => (
+                  <tr key={entry.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                    <td className="px-4 py-3 text-sm text-gray-800 border border-gray-300">{entry.beneficiaryNumber}</td>
+                    <td className="px-4 py-3 text-sm text-gray-800 border border-gray-300">{entry.minutes}</td>
+                    <td className="px-4 py-3 text-sm text-gray-800 border border-gray-300">{entry.sms}</td>
+                    <td className="px-4 py-3 text-sm text-gray-800 border border-gray-300">{entry.dataSize}</td>
+                    <td className="px-4 py-3 text-sm text-gray-800 border border-gray-300">{entry.processingReport}</td>
+                    <td className="px-4 py-3 text-sm text-gray-800 border border-gray-300">{entry.failureReason}</td>
+                    <td className="px-4 py-3 text-sm text-gray-800 border border-gray-300">{formatDate(entry.uploadedDateTime)}</td>
+                    <td className="px-4 py-3 text-center border border-gray-300">
                       <button
                         onClick={() => handleDelete(entry.id)}
                         className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
