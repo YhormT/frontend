@@ -288,7 +288,11 @@ const UserDashboard = () => {
     }
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + ((item.product?.price || 0) * (item.quantity || 1)), 0);
+  const cartTotal = cart.reduce((sum, item) => {
+    const p = item.product || {};
+    const effectivePrice = (p.usePromoPrice && p.promoPrice != null) ? p.promoPrice : (p.price || 0);
+    return sum + effectivePrice * (item.quantity || 1);
+  }, 0);
 
   const submitCart = async () => {
     if (isSubmitting) return;
@@ -644,7 +648,7 @@ const UserDashboard = () => {
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-white text-sm sm:text-base truncate">{item.product?.name} - {item.product?.description}</h3>
                         <p className="text-dark-400 text-xs sm:text-sm">{item.mobileNumber}</p>
-                        <p className="text-dark-300 text-xs sm:text-sm font-medium">GHS {item.product?.price}</p>
+                        <p className="text-dark-300 text-xs sm:text-sm font-medium">GHS {(item.product?.usePromoPrice && item.product?.promoPrice != null) ? item.product.promoPrice : item.product?.price}</p>
                       </div>
                       <button onClick={() => removeFromCart(item.id)} className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg active:scale-95 transition-transform flex-shrink-0">
                         <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
