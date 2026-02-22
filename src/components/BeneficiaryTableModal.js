@@ -15,7 +15,7 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
 
   // Format date as "20th, Feb. 2026 01:11PM"
   const formatDate = (dateInput) => {
-    if (!dateInput) return '-';
+    if (!dateInput) return '';
     const date = new Date(dateInput);
     const day = date.getDate();
     const suffix = (day === 1 || day === 21 || day === 31) ? 'st' 
@@ -72,7 +72,7 @@ const BeneficiaryTableModal = ({ isOpen, onClose }) => {
       dataSize: formData.dataSize || '-',
       processingReport: formData.processingReport || 'Validating...',
       failureReason: formData.failureReason || '',
-      uploadedDateTime: formData.uploadedDateTime || new Date().toISOString()
+      uploadedDateTime: formData.uploadedDateTime || ''
     };
     
     setEntries(prev => [newEntry, ...prev]);
