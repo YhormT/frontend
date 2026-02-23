@@ -255,7 +255,7 @@ const Login = () => {
 
             <div className="text-center pt-1">
               <a
-                href="https://wa.me/233244450003"
+                href="https://wa.me/233248830004"
                 className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 transition-colors font-medium"
               >
                 <span>Need an account? Request access</span>
@@ -688,7 +688,7 @@ const Login = () => {
 
               <section>
                 <h3 className="font-semibold text-lg text-gray-800 mb-2">5. What if I don't receive my data bundle?</h3>
-                <p>If you don't receive your data within 15 minutes, please contact our support team via WhatsApp at 0248830004 with your Order ID and payment confirmation.</p>
+                <p>If you don't receive your data within 15 minutes, please contact our support team via WhatsApp at 0596316991 with your Order ID and payment confirmation.</p>
               </section>
 
               <section>
@@ -714,7 +714,7 @@ const Login = () => {
               <section>
                 <h3 className="font-semibold text-lg text-gray-800 mb-2">10. How can I contact customer support?</h3>
                 <ul className="list-disc list-inside space-y-1">
-                  <li>WhatsApp: <span className="text-blue-600">0244450003</span></li>
+                  <li>WhatsApp: <span className="text-blue-600">0540277583</span></li>
                   <li>Email: <a href="mailto:kelisdata22@gmail.com" className="text-blue-500 underline">kelisdata22@gmail.com</a></li>
                 </ul>
               </section>
