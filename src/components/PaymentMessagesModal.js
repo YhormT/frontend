@@ -75,6 +75,9 @@ const PaymentMessagesModal = ({ isOpen, onClose }) => {
     return matchesSearch && matchesDate;
   });
 
+  const totalProcessed = filteredData.filter(i => i.isProcessed).reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+  const totalUnprocessed = filteredData.filter(i => !i.isProcessed).reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -152,6 +155,30 @@ const PaymentMessagesModal = ({ isOpen, onClose }) => {
           <button onClick={() => fetchMessages(false)} className="p-2 bg-dark-700 hover:bg-dark-600 rounded-xl text-dark-300">
             <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
           </button>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="px-4 pt-4 pb-2 grid grid-cols-2 gap-3">
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <Check className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-dark-400 text-xs font-medium uppercase tracking-wide">Total Processed</p>
+              <p className="text-emerald-400 text-xl font-bold">GHS {totalProcessed.toFixed(2)}</p>
+              <p className="text-dark-500 text-xs">{filteredData.filter(i => i.isProcessed).length} messages</p>
+            </div>
+          </div>
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center flex-shrink-0">
+              <BadgeCent className="w-5 h-5 text-red-400" />
+            </div>
+            <div>
+              <p className="text-dark-400 text-xs font-medium uppercase tracking-wide">Total Unprocessed</p>
+              <p className="text-red-400 text-xl font-bold">GHS {totalUnprocessed.toFixed(2)}</p>
+              <p className="text-dark-500 text-xs">{filteredData.filter(i => !i.isProcessed).length} messages</p>
+            </div>
+          </div>
         </div>
 
         {/* Table */}
