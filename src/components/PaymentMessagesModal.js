@@ -8,6 +8,7 @@ const PaymentMessagesModal = ({ isOpen, onClose }) => {
   const [paymentData, setPaymentData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
   const prevDataRef = useRef([]);
@@ -67,13 +68,34 @@ const PaymentMessagesModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const filteredData = paymentData.filter(item => 
-    !searchTerm || item.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.message?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredData = paymentData.filter(item => {
+    const matchesSearch = !searchTerm || item.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.message?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDate = !dateFilter || (item.createdAt && item.createdAt.slice(0, 10) === dateFilter);
+    return matchesSearch && matchesDate;
+  });
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const day = d.getDate();
+    const month = d.toLocaleString('default', { month: 'short' });
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
+
+  const formatTime = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    return `${hours}:${minutes} ${ampm}`;
+  };
 
   const truncateMessage = (message, limit = 60) => {
     if (!message || message.length <= limit) return message;
@@ -111,6 +133,22 @@ const PaymentMessagesModal = ({ isOpen, onClose }) => {
               className="w-full bg-dark-900/50 border border-dark-600 rounded-xl pl-10 pr-4 py-2 text-white placeholder-dark-500 focus:border-emerald-500 focus:outline-none"
             />
           </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }}
+              className="bg-dark-900/50 border border-dark-600 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none text-sm [color-scheme:dark]"
+            />
+            {dateFilter && (
+              <button
+                onClick={() => { setDateFilter(''); setCurrentPage(1); }}
+                className="px-3 py-2 bg-dark-700 hover:bg-dark-600 rounded-xl text-dark-300 text-sm whitespace-nowrap"
+              >
+                Clear
+              </button>
+            )}
+          </div>
           <button onClick={() => fetchMessages(false)} className="p-2 bg-dark-700 hover:bg-dark-600 rounded-xl text-dark-300">
             <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -134,6 +172,8 @@ const PaymentMessagesModal = ({ isOpen, onClose }) => {
                   <th className="pb-3 pr-4 font-medium w-32">Reference</th>
                   <th className="pb-3 px-4 font-medium text-right w-28">Amount</th>
                   <th className="pb-3 px-4 font-medium flex-1">Message</th>
+                  <th className="pb-3 px-4 font-medium w-28">Date</th>
+                  <th className="pb-3 px-4 font-medium w-24">Time</th>
                   <th className="pb-3 px-4 font-medium text-center w-24">Processed</th>
                   <th className="pb-3 pl-4 font-medium text-center w-28">Action</th>
                 </tr>
@@ -144,6 +184,8 @@ const PaymentMessagesModal = ({ isOpen, onClose }) => {
                     <td className="py-3 pr-4 text-white font-medium">{sms.reference || 'N/A'}</td>
                     <td className="py-3 px-4 text-right text-emerald-400 font-bold whitespace-nowrap">GHS {sms.amount || 0}</td>
                     <td className="py-3 px-4 text-dark-300 text-sm max-w-md">{truncateMessage(sms.message)}</td>
+                    <td className="py-3 px-4 text-dark-300 text-sm whitespace-nowrap">{formatDate(sms.createdAt)}</td>
+                    <td className="py-3 px-4 text-dark-300 text-sm whitespace-nowrap">{formatTime(sms.createdAt)}</td>
                     <td className="py-3 px-4 text-center">
                       {sms.isProcessed ? (
                         <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-xs font-medium">Yes</span>
