@@ -12,6 +12,7 @@ import TransactionsModal from '../components/TransactionsModal';
 import UploadExcel from '../components/UploadExcel';
 import PasteOrders from '../components/PasteOrders';
 import Storefront from '../components/Storefront';
+import FloatingChatButton from '../components/FloatingChatButton';
 
 const UserDashboard = () => {
   const navigate = useNavigate();
@@ -689,6 +690,9 @@ const UserDashboard = () => {
         onClose={() => setShowStorefront(false)}
         userId={localStorage.getItem('userId')}
       />
+
+      {/* Floating Chat */}
+      <FloatingChatButton currentUser={{ id: parseInt(localStorage.getItem('userId')), name: localStorage.getItem('name'), role: 'USER' }} />
     </div>
   );
 };

@@ -12,6 +12,7 @@ import TransactionsModal from '../components/TransactionsModal';
 import UploadExcel from '../components/UploadExcel';
 import PasteOrders from '../components/PasteOrders';
 import Storefront from '../components/Storefront';
+import FloatingChatButton from '../components/FloatingChatButton';
 
 const Premium = () => {
   const navigate = useNavigate();
@@ -442,6 +443,8 @@ const Premium = () => {
           </div>
         </div>
       )}
+      {/* Floating Chat */}
+      <FloatingChatButton currentUser={{ id: parseInt(localStorage.getItem('userId')), name: localStorage.getItem('name'), role: 'PREMIUM' }} />
     </div>
   );
 };

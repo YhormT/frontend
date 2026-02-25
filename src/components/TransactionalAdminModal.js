@@ -338,6 +338,23 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
     return filtered;
   }, [referralData.orders, referralFilters.agent]);
 
+  const referralStats = useMemo(() => {
+    let totalAmount = 0;
+    let mtnGB = 0, telecelGB = 0, airtelGB = 0, otherGB = 0;
+    filteredReferralOrders.forEach(order => {
+      totalAmount += parseFloat(order.agentPrice) || 0;
+      const desc = order.product?.description || '';
+      const name = (order.product?.name || '').toUpperCase();
+      const match = desc.match(/(\d+(?:\.\d+)?)\s*GB/i);
+      const gb = match ? parseFloat(match[1]) : 0;
+      if (name.includes('MTN')) mtnGB += gb;
+      else if (name.includes('TELECEL')) telecelGB += gb;
+      else if (name.includes('AIRTEL')) airtelGB += gb;
+      else otherGB += gb;
+    });
+    return { totalAmount, mtnGB, telecelGB, airtelGB, otherGB, totalGB: mtnGB + telecelGB + airtelGB + otherGB };
+  }, [filteredReferralOrders]);
+
   // Handle marking commissions as paid
   const handleMarkCommissionPaid = async (agentId, orderIds) => {
     try {
@@ -656,6 +673,49 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
                       className="bg-dark-900 border border-dark-600 rounded-lg px-2 py-2 text-sm text-white focus:border-violet-500 focus:outline-none" />
                     <input type="date" value={referralFilters.endDate} onChange={(e) => setReferralFilters(s => ({ ...s, endDate: e.target.value }))}
                       className="bg-dark-900 border border-dark-600 rounded-lg px-2 py-2 text-sm text-white focus:border-violet-500 focus:outline-none" />
+                  </div>
+
+                  {/* Referral Summary Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    <div className="bg-dark-900/50 border border-cyan-500/30 rounded-xl p-4">
+                      <p className="text-cyan-400 text-xs font-medium uppercase tracking-wide mb-2">Total GB Sold</p>
+                      <p className="text-2xl font-bold text-white mb-3">{referralStats.totalGB.toFixed(2)} GB</p>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                        {referralStats.mtnGB > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0"></span>
+                            <span className="text-dark-400 text-xs">MTN</span>
+                            <span className="text-yellow-400 text-xs font-semibold ml-auto">{referralStats.mtnGB.toFixed(2)} GB</span>
+                          </div>
+                        )}
+                        {referralStats.telecelGB > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0"></span>
+                            <span className="text-dark-400 text-xs">TELECEL</span>
+                            <span className="text-red-400 text-xs font-semibold ml-auto">{referralStats.telecelGB.toFixed(2)} GB</span>
+                          </div>
+                        )}
+                        {referralStats.airtelGB > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"></span>
+                            <span className="text-dark-400 text-xs">AIRTEL</span>
+                            <span className="text-blue-400 text-xs font-semibold ml-auto">{referralStats.airtelGB.toFixed(2)} GB</span>
+                          </div>
+                        )}
+                        {referralStats.otherGB > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-dark-400 flex-shrink-0"></span>
+                            <span className="text-dark-400 text-xs">Other</span>
+                            <span className="text-dark-300 text-xs font-semibold ml-auto">{referralStats.otherGB.toFixed(2)} GB</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="bg-dark-900/50 border border-emerald-500/30 rounded-xl p-4 flex flex-col justify-between">
+                      <p className="text-emerald-400 text-xs font-medium uppercase tracking-wide mb-2">Total Amount</p>
+                      <p className="text-2xl font-bold text-emerald-400">{formatAmount(referralStats.totalAmount)}</p>
+                      <p className="text-dark-500 text-xs mt-2">{filteredReferralOrders.length} order{filteredReferralOrders.length !== 1 ? 's' : ''}</p>
+                    </div>
                   </div>
 
                   {/* Referral Stats */}

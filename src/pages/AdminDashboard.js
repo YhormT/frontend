@@ -14,6 +14,7 @@ import OrderTable from '../components/OrderTable';
 import AgentCommissionModal from '../components/AgentCommissionModal';
 import PaymentMessagesModal from '../components/PaymentMessagesModal';
 import BeneficiaryTableModal from '../components/BeneficiaryTableModal';
+import FloatingChatButton from '../components/FloatingChatButton';
 
 // Notification sound
 const notificationSound = new Audio('/notification-sound.mp3');
@@ -1106,6 +1107,9 @@ const AdminDashboard = () => {
 
       {/* Beneficiary Table Modal */}
       <BeneficiaryTableModal isOpen={showBeneficiaryModal} onClose={() => setShowBeneficiaryModal(false)} />
+
+      {/* Floating Chat */}
+      <FloatingChatButton currentUser={{ id: parseInt(localStorage.getItem('userId')), name: localStorage.getItem('name'), role: 'admin' }} />
     </div>
   );
 };
