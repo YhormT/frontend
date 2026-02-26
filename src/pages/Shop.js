@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import BASE_URL from '../endpoints/endpoints';
 import ComplaintModal from '../components/ComplaintModal';
 import ShopAnnouncementBanner from '../components/ShopAnnouncementBanner';
+import ShopFloatingChatButton from '../components/ShopFloatingChatButton';
 
 
 const Shop = () => {
@@ -622,6 +623,7 @@ const Shop = () => {
       )}
 
       <ComplaintModal isOpen={showComplaintModal} onClose={() => setShowComplaintModal(false)} />
+      <ShopFloatingChatButton />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { io as socketIO } from 'socket.io-client';
 import Swal from 'sweetalert2';
 import { Menu, Wallet, Package, Clock, CheckCircle, ShoppingCart, Loader2, RefreshCw, Trash2, History, X, Banknote, Sparkles } from 'lucide-react';
 import BASE_URL from '../endpoints/endpoints';
@@ -104,6 +105,13 @@ const UserDashboard = () => {
     const interval = setInterval(fetchLoanBalance, 60000);
     return () => clearInterval(interval);
   }, [fetchData, fetchLoanBalance, navigate]);
+
+  // Listen for real-time product stock updates
+  useEffect(() => {
+    const socket = socketIO(BASE_URL, { transports: ['websocket', 'polling'] });
+    socket.on('product:stock-update', () => { fetchProducts(); });
+    return () => socket.disconnect();
+  }, [fetchProducts]);
 
   useEffect(() => {
     if (showHistory) {

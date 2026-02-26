@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import { Package, Loader2, Phone, XCircle, Shield, X, Filter, Wifi, Zap, Star, ArrowRight, Search, MessageSquareWarning, CheckCircle, Clock } from 'lucide-react';
 import BASE_URL from '../endpoints/endpoints';
 import ComplaintModal from '../components/ComplaintModal';
+import ShopFloatingChatButton from '../components/ShopFloatingChatButton';
 
 const PublicStorefront = () => {
   const { slug } = useParams();
@@ -550,6 +551,7 @@ const PublicStorefront = () => {
       )}
 
       <ComplaintModal isOpen={showComplaintModal} onClose={() => setShowComplaintModal(false)} />
+      <ShopFloatingChatButton />
     </div>
   );
 };

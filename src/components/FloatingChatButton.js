@@ -8,15 +8,25 @@ const FloatingChatButton = ({ currentUser }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const token = localStorage.getItem('token');
+  const isAdmin = currentUser?.role?.toLowerCase() === 'admin';
 
   const fetchUnreadCount = useCallback(async () => {
     try {
       const res = await axios.get(`${BASE_URL}/api/chat/unread-count`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (res.data.success) setUnreadCount(res.data.count);
+      let total = res.data.success ? res.data.count : 0;
+      if (isAdmin) {
+        try {
+          const shopRes = await axios.get(`${BASE_URL}/api/shop-chat/admin-unread-count`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (shopRes.data.success) total += shopRes.data.count;
+        } catch (e) {}
+      }
+      setUnreadCount(total);
     } catch (e) {}
-  }, [token]);
+  }, [token, isAdmin]);
 
   useEffect(() => {
     if (!currentUser) return;

@@ -22,9 +22,11 @@ const playChatAlert = () => {
 
 const ChatWindow = ({ isOpen, onClose, currentUser }) => {
   const [conversations, setConversations] = useState([]);
+  const [shopConversations, setShopConversations] = useState([]);
   const [agents, setAgents] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
   const [activeUser, setActiveUser] = useState(null);
+  const [isShopChat, setIsShopChat] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [msgLoading, setMsgLoading] = useState(false);
@@ -48,7 +50,7 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
   const inputRef = useRef(null);
 
   const token = localStorage.getItem('token');
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.role?.toLowerCase() === 'admin';
 
   const activeConversationRef = useRef(activeConversation);
   activeConversationRef.current = activeConversation;
@@ -97,6 +99,38 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
       fetchConversations();
     });
 
+    // Shop chat socket listeners (for admin receiving shop customer messages)
+    socket.on('shop-chat:receive', (data) => {
+      if (data.conversationId === activeConversationRef.current) {
+        setMessages(prev => [...prev, data.message]);
+        scrollToBottom();
+        axios.put(`${BASE_URL}/api/shop-chat/conversations/${data.conversationId}/read`, { readerType: 'admin' }).catch(() => {});
+      }
+      playChatAlert();
+      fetchShopConversations();
+    });
+
+    socket.on('shop-chat:typing', (data) => {
+      if (data.conversationId === activeConversationRef.current) setTyping(true);
+    });
+
+    socket.on('shop-chat:stop-typing', (data) => {
+      if (data.conversationId === activeConversationRef.current) setTyping(false);
+    });
+
+    socket.on('shop-chat:read', (data) => {
+      if (data.conversationId === activeConversationRef.current) {
+        setMessages(prev => prev.map(m => m.senderType === 'admin' ? { ...m, readAt: new Date().toISOString() } : m));
+      }
+    });
+
+    socket.on('shop-chat:delete', (data) => {
+      if (data.forAll) {
+        setMessages(prev => prev.map(m => m.id === data.messageId ? { ...m, isDeleted: true, deletedForAll: true, decryptedContent: '' } : m));
+      }
+      fetchShopConversations();
+    });
+
     return () => { socket.disconnect(); socketRef.current = null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, currentUser]);
@@ -108,6 +142,14 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
     } catch (e) { console.error('Error fetching conversations:', e); }
   }, [token]);
 
+  const fetchShopConversations = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const res = await axios.get(`${BASE_URL}/api/shop-chat/conversations/admin`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.data.success) setShopConversations(res.data.conversations);
+    } catch (e) { console.error('Error fetching shop conversations:', e); }
+  }, [token, isAdmin]);
+
   const fetchAgents = useCallback(async () => {
     try {
       const endpoint = isAdmin ? `${BASE_URL}/api/chat/agents` : `${BASE_URL}/api/chat/admins`;
@@ -117,18 +159,19 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
   }, [token, isAdmin]);
 
   useEffect(() => {
-    if (isOpen) { fetchConversations(); fetchAgents(); }
-  }, [isOpen, fetchConversations, fetchAgents]);
+    if (isOpen) { fetchConversations(); fetchAgents(); fetchShopConversations(); }
+  }, [isOpen, fetchConversations, fetchAgents, fetchShopConversations]);
 
   // Poll for unread updates
   useEffect(() => {
     if (!isOpen) return;
-    const interval = setInterval(fetchConversations, 15000);
+    const interval = setInterval(() => { fetchConversations(); fetchShopConversations(); }, 15000);
     return () => clearInterval(interval);
-  }, [isOpen, fetchConversations]);
+  }, [isOpen, fetchConversations, fetchShopConversations]);
 
   const openChat = async (userId, user) => {
     setActiveUser(user);
+    setIsShopChat(false);
     setMsgLoading(true);
     setMessages([]);
     setPage(1);
@@ -140,7 +183,6 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
         setActiveConversation(res.data.conversationId);
         setHasMore(res.data.hasMore);
         setTimeout(scrollToBottom, 100);
-        // Notify sender we read their messages
         if (socketRef.current) {
           socketRef.current.emit('chat:read', { recipientId: userId, conversationId: res.data.conversationId, readBy: currentUser.id });
         }
@@ -150,11 +192,40 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
     finally { setMsgLoading(false); }
   };
 
+  const openShopChat = async (conv) => {
+    setActiveUser({ name: conv.displayName, customerPhone: conv.customerPhone, isShop: true });
+    setIsShopChat(true);
+    setMsgLoading(true);
+    setMessages([]);
+    setPage(1);
+    setView('chat');
+    try {
+      const res = await axios.get(`${BASE_URL}/api/shop-chat/conversations/${conv.id}/messages-by-id?page=1`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.data.success) {
+        setMessages(res.data.messages);
+        setActiveConversation(conv.id);
+        setHasMore(res.data.hasMore);
+        setTimeout(scrollToBottom, 100);
+        await axios.put(`${BASE_URL}/api/shop-chat/conversations/${conv.id}/read`, { readerType: 'admin' });
+        if (socketRef.current) {
+          socketRef.current.emit('shop-chat:read', { recipientKey: `shop:${conv.customerPhone}`, conversationId: conv.id });
+        }
+        fetchShopConversations();
+      }
+    } catch (e) { console.error('Error opening shop chat:', e); }
+    finally { setMsgLoading(false); }
+  };
+
   const loadMoreMessages = async () => {
     if (!hasMore || !activeUser) return;
     const nextPage = page + 1;
     try {
-      const res = await axios.get(`${BASE_URL}/api/chat/conversations/${activeUser.id}/messages?page=${nextPage}`, { headers: { Authorization: `Bearer ${token}` } });
+      let res;
+      if (isShopChat) {
+        res = await axios.get(`${BASE_URL}/api/shop-chat/conversations/${activeConversation}/messages-by-id?page=${nextPage}`, { headers: { Authorization: `Bearer ${token}` } });
+      } else {
+        res = await axios.get(`${BASE_URL}/api/chat/conversations/${activeUser.id}/messages?page=${nextPage}`, { headers: { Authorization: `Bearer ${token}` } });
+      }
       if (res.data.success) {
         setMessages(prev => [...res.data.messages, ...prev]);
         setPage(nextPage);
@@ -174,18 +245,42 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
     const tempId = `temp-${Date.now()}`;
     const optimisticMsg = {
       id: tempId,
-      senderId: currentUser.id,
+      senderId: isShopChat ? String(currentUser.id) : currentUser.id,
+      senderType: isShopChat ? 'admin' : undefined,
       decryptedContent: text,
       createdAt: new Date().toISOString(),
       readAt: null,
       isDeleted: false,
       deletedForAll: false,
       forwardedFrom: null,
-      replyTo: currentReplyTo ? { id: currentReplyTo.id, senderId: currentReplyTo.senderId, decryptedContent: currentReplyTo.decryptedContent, createdAt: currentReplyTo.createdAt, isDeleted: false } : null,
+      replyTo: currentReplyTo ? { id: currentReplyTo.id, senderId: currentReplyTo.senderId, senderType: currentReplyTo.senderType, decryptedContent: currentReplyTo.decryptedContent, createdAt: currentReplyTo.createdAt, isDeleted: false } : null,
       _optimistic: true
     };
     setMessages(prev => [...prev, optimisticMsg]);
     scrollToBottom();
+
+    if (isShopChat) {
+      try {
+        const res = await axios.post(`${BASE_URL}/api/shop-chat/conversations/${activeConversation}/admin-message`, {
+          text, replyToId: currentReplyTo?.id || null
+        }, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.data.success) {
+          setMessages(prev => prev.map(m => m.id === tempId ? res.data.message : m));
+          if (socketRef.current) {
+            socketRef.current.emit('shop-chat:send', {
+              recipientKey: `shop:${activeUser.customerPhone}`,
+              message: res.data.message,
+              conversationId: res.data.conversationId
+            });
+          }
+          fetchShopConversations();
+        }
+      } catch (e) {
+        setMessages(prev => prev.filter(m => m.id !== tempId));
+        console.error('Error sending shop message:', e);
+      }
+      return;
+    }
 
     try {
       const res = await axios.post(`${BASE_URL}/api/chat/conversations/${activeUser.id}/messages`, {
@@ -219,19 +314,32 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
 
   const deleteMessage = async (msgId, forAll = false) => {
     try {
-      await axios.delete(`${BASE_URL}/api/chat/messages/${msgId}`, {
-        headers: { Authorization: `Bearer ${token}` }, data: { forAll }
-      });
-      if (forAll) {
-        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isDeleted: true, deletedForAll: true, decryptedContent: '' } : m));
-        if (socketRef.current && activeUser) {
-          socketRef.current.emit('chat:delete', { recipientId: activeUser.id, messageId: msgId, forAll: true });
+      if (isShopChat) {
+        await axios.delete(`${BASE_URL}/api/shop-chat/messages/${msgId}`, { data: { senderId: String(currentUser.id), forAll } });
+        if (forAll) {
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isDeleted: true, deletedForAll: true, decryptedContent: '' } : m));
+          if (socketRef.current && activeUser) {
+            socketRef.current.emit('shop-chat:delete', { recipientKey: `shop:${activeUser.customerPhone}`, messageId: msgId, forAll: true });
+          }
+        } else {
+          setMessages(prev => prev.filter(m => m.id !== msgId));
         }
       } else {
-        setMessages(prev => prev.filter(m => m.id !== msgId));
+        await axios.delete(`${BASE_URL}/api/chat/messages/${msgId}`, {
+          headers: { Authorization: `Bearer ${token}` }, data: { forAll }
+        });
+        if (forAll) {
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isDeleted: true, deletedForAll: true, decryptedContent: '' } : m));
+          if (socketRef.current && activeUser) {
+            socketRef.current.emit('chat:delete', { recipientId: activeUser.id, messageId: msgId, forAll: true });
+          }
+        } else {
+          setMessages(prev => prev.filter(m => m.id !== msgId));
+        }
       }
       setContextMenu(null);
       fetchConversations();
+      fetchShopConversations();
     } catch (e) { console.error('Error deleting:', e); }
   };
 
@@ -250,11 +358,19 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
 
   const handleTyping = () => {
     if (socketRef.current && activeUser) {
-      socketRef.current.emit('chat:typing', { recipientId: activeUser.id, senderId: currentUser.id, conversationId: activeConversation });
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = setTimeout(() => {
-        socketRef.current?.emit('chat:stop-typing', { recipientId: activeUser.id, senderId: currentUser.id, conversationId: activeConversation });
-      }, 2000);
+      if (isShopChat) {
+        socketRef.current.emit('shop-chat:typing', { recipientKey: `shop:${activeUser.customerPhone}`, senderKey: String(currentUser.id), conversationId: activeConversation });
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => {
+          socketRef.current?.emit('shop-chat:stop-typing', { recipientKey: `shop:${activeUser.customerPhone}`, senderKey: String(currentUser.id), conversationId: activeConversation });
+        }, 2000);
+      } else {
+        socketRef.current.emit('chat:typing', { recipientId: activeUser.id, senderId: currentUser.id, conversationId: activeConversation });
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => {
+          socketRef.current?.emit('chat:stop-typing', { recipientId: activeUser.id, senderId: currentUser.id, conversationId: activeConversation });
+        }, 2000);
+      }
     }
   };
 
@@ -301,10 +417,28 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
     return groups;
   };
 
-  // Filter conversations and agents based on search
-  const filteredConversations = conversations.filter(c =>
-    !searchTerm || c.otherUser?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Merge agent conversations and shop conversations into one sorted list
+  const allConversations = [
+    ...conversations.map(c => ({ ...c, _isShop: false })),
+    ...(isAdmin ? shopConversations.map(c => ({
+      ...c,
+      _isShop: true,
+      otherUser: { name: c.displayName, id: `shop-${c.id}`, isLoggedIn: false },
+      lastMessage: c.lastMessage
+    })) : [])
+  ].sort((a, b) => {
+    const aTime = a.lastMessage?.createdAt || a.lastMessageAt || a.createdAt || '';
+    const bTime = b.lastMessage?.createdAt || b.lastMessageAt || b.createdAt || '';
+    return new Date(bTime) - new Date(aTime);
+  });
+
+  // Filter merged conversations and agents based on search
+  const filteredConversations = allConversations.filter(c => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    if (c._isShop) return c.displayName?.toLowerCase().includes(term) || c.customerPhone?.includes(searchTerm);
+    return c.otherUser?.name?.toLowerCase().includes(term);
+  });
   const filteredAgents = agents.filter(a =>
     !searchTerm || a.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -386,23 +520,23 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
             ) : (
               <>
                 {filteredConversations.map(conv => (
-                  <div key={conv.id} onClick={() => openChat(conv.otherUser?.id, conv.otherUser)}
+                  <div key={conv._isShop ? `shop-${conv.id}` : conv.id} onClick={() => conv._isShop ? openShopChat(conv) : openChat(conv.otherUser?.id, conv.otherUser)}
                     className="flex items-center gap-3 px-4 py-3 hover:bg-dark-700/50 cursor-pointer border-b border-dark-700/30 transition-colors">
                     <div className="relative flex-shrink-0">
-                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm">
-                        {conv.otherUser?.name?.charAt(0)?.toUpperCase()}
+                      <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm ${conv._isShop ? 'bg-gradient-to-br from-orange-500 to-amber-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'}`}>
+                        {conv._isShop ? 'S' : conv.otherUser?.name?.charAt(0)?.toUpperCase()}
                       </div>
-                      {conv.otherUser?.isLoggedIn && <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-dark-800 rounded-full" />}
+                      {!conv._isShop && conv.otherUser?.isLoggedIn && <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-dark-800 rounded-full" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-baseline">
-                        <p className="text-white font-medium text-sm truncate">{conv.otherUser?.name}</p>
+                        <p className="text-white font-medium text-sm truncate">{conv._isShop ? conv.displayName : conv.otherUser?.name}</p>
                         <span className="text-dark-500 text-xs flex-shrink-0 ml-2">{conv.lastMessage ? formatTime(conv.lastMessage.createdAt) : ''}</span>
                       </div>
                       <div className="flex justify-between items-center mt-0.5">
                         <p className="text-dark-400 text-xs truncate">{conv.lastMessage?.decryptedContent || 'No messages yet'}</p>
                         {conv.unreadCount > 0 && (
-                          <span className="flex-shrink-0 ml-2 w-5 h-5 bg-emerald-500 text-white text-xs font-bold rounded-full flex items-center justify-center">{conv.unreadCount}</span>
+                          <span className={`flex-shrink-0 ml-2 w-5 h-5 text-white text-xs font-bold rounded-full flex items-center justify-center ${conv._isShop ? 'bg-orange-500' : 'bg-emerald-500'}`}>{conv.unreadCount}</span>
                         )}
                       </div>
                     </div>
@@ -447,7 +581,7 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
         <>
           {/* Chat header */}
           <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-3 flex items-center gap-3 flex-shrink-0">
-            <button onClick={() => { setView('list'); setActiveConversation(null); setActiveUser(null); setMessages([]); setReplyTo(null); setShowChatSearch(false); setChatSearch(''); }}
+            <button onClick={() => { setView('list'); setActiveConversation(null); setActiveUser(null); setIsShopChat(false); setMessages([]); setReplyTo(null); setShowChatSearch(false); setChatSearch(''); }}
               className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg"><ArrowLeft className="w-5 h-5 text-white" /></button>
             <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
               {activeUser?.name?.charAt(0)?.toUpperCase()}
@@ -490,7 +624,7 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
                       </div>
                     );
                   }
-                  const isMe = item.senderId === currentUser?.id;
+                  const isMe = isShopChat ? item.senderType === 'admin' : item.senderId === currentUser?.id;
                   const isHighlighted = chatSearch && item.decryptedContent?.toLowerCase().includes(chatSearch.toLowerCase());
                   return (
                     <div key={item.id} id={`msg-${item.id}`}
@@ -584,7 +718,7 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
               className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-dark-700 flex items-center gap-2"><Forward className="w-4 h-4 text-dark-400" /> Forward</button>
             <button onClick={() => { navigator.clipboard.writeText(contextMenu.msg.decryptedContent); setContextMenu(null); }}
               className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-dark-700 flex items-center gap-2">📋 Copy</button>
-            {contextMenu.msg.senderId === currentUser?.id && (
+            {(isShopChat ? contextMenu.msg.senderType === 'admin' : contextMenu.msg.senderId === currentUser?.id) && (
               <button onClick={() => deleteMessage(contextMenu.msg.id, true)}
                 className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-dark-700 flex items-center gap-2"><Trash2 className="w-4 h-4" /> Delete for everyone</button>
             )}
