@@ -8,7 +8,7 @@ const AnnouncementAdmin = ({ isOpen, onClose }) => {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ title: '', message: '', isActive: true, target: 'agents' });
+  const [formData, setFormData] = useState({ title: '', message: '', isActive: true, target: 'agents', priority: 1 });
 
   const fetchAnnouncements = async () => {
     setLoading(true);
@@ -31,7 +31,7 @@ const AnnouncementAdmin = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const resetForm = () => {
-    setFormData({ title: '', message: '', isActive: true, target: 'agents' });
+    setFormData({ title: '', message: '', isActive: true, target: 'agents', priority: 1 });
     setEditingId(null);
   };
 
@@ -62,7 +62,7 @@ const AnnouncementAdmin = ({ isOpen, onClose }) => {
   };
 
   const handleEdit = (announcement) => {
-    setFormData({ title: announcement.title, message: announcement.message, isActive: announcement.isActive, target: announcement.target || 'agents' });
+    setFormData({ title: announcement.title, message: announcement.message, isActive: announcement.isActive, target: announcement.target || 'agents', priority: announcement.priority || 1 });
     setEditingId(announcement.id);
   };
 
@@ -123,17 +123,22 @@ const AnnouncementAdmin = ({ isOpen, onClose }) => {
                     className="w-full bg-dark-800 border border-dark-600 rounded-lg px-4 py-3 text-white placeholder-dark-400 focus:border-amber-500 focus:outline-none" />
                   <textarea placeholder="Message" value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} rows={3}
                     className="w-full bg-dark-800 border border-dark-600 rounded-lg px-4 py-3 text-white placeholder-dark-400 resize-none focus:border-amber-500 focus:outline-none" />
-                  <div className="flex gap-4">
-                    <label className="text-dark-300 text-sm">Display on:</label>
-                    <label className="flex items-center gap-2 text-dark-300">
-                      <input type="radio" name="target" value="shop" checked={formData.target === 'shop'} onChange={(e) => setFormData({ ...formData, target: e.target.value })}
-                        className="w-4 h-4 text-amber-500 focus:ring-amber-500" />
-                      Shop Page
-                    </label>
+                  <div className="flex flex-wrap gap-4">
+                    <label className="text-dark-300 text-sm self-center">Display on:</label>
                     <label className="flex items-center gap-2 text-dark-300">
                       <input type="radio" name="target" value="agents" checked={formData.target === 'agents'} onChange={(e) => setFormData({ ...formData, target: e.target.value })}
                         className="w-4 h-4 text-amber-500 focus:ring-amber-500" />
                       Agent Notifications
+                    </label>
+                    <label className="flex items-center gap-2 text-dark-300">
+                      <input type="radio" name="target" value="shop" checked={formData.target === 'shop'} onChange={(e) => setFormData({ ...formData, target: e.target.value })}
+                        className="w-4 h-4 text-amber-500 focus:ring-amber-500" />
+                      Shop Banner
+                    </label>
+                    <label className="flex items-center gap-2 text-red-300 font-medium">
+                      <input type="radio" name="target" value="shop-alert" checked={formData.target === 'shop-alert'} onChange={(e) => setFormData({ ...formData, target: e.target.value })}
+                        className="w-4 h-4 text-red-500 focus:ring-red-500" />
+                      Shop Alert (Popup)
                     </label>
                   </div>
                   <div className="flex items-center justify-between">
@@ -168,8 +173,12 @@ const AnnouncementAdmin = ({ isOpen, onClose }) => {
                             <span className={`px-2 py-0.5 rounded-full text-xs ${ann.isActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-dark-700 text-dark-400'}`}>
                               {ann.isActive ? 'Active' : 'Inactive'}
                             </span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs ${ann.target === 'shop' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-purple-500/20 text-purple-400'}`}>
-                              {ann.target === 'shop' ? 'Shop' : 'Agents'}
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${
+                              ann.target === 'shop-alert' ? 'bg-red-500/20 text-red-400' :
+                              ann.target === 'shop' ? 'bg-cyan-500/20 text-cyan-400' :
+                              'bg-purple-500/20 text-purple-400'
+                            }`}>
+                              {ann.target === 'shop-alert' ? '🚨 Shop Alert' : ann.target === 'shop' ? 'Shop Banner' : 'Agents'}
                             </span>
                           </div>
                           <p className="text-dark-400 text-sm">{ann.message}</p>

@@ -18,10 +18,11 @@ const ShopFloatingChatButton = () => {
   }, [phone]);
 
   useEffect(() => {
+    if (!phone) return;
     fetchUnreadCount();
     const interval = setInterval(fetchUnreadCount, 10000);
     return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
+  }, [fetchUnreadCount, phone]);
 
   useEffect(() => {
     if (!isOpen) fetchUnreadCount();

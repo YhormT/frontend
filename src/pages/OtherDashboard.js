@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { io as socketIO } from 'socket.io-client';
+import getSocket from '../utils/socket';
 import Swal from 'sweetalert2';
 import { Menu, Wallet, Package, Clock, CheckCircle, ShoppingCart, Loader2, RefreshCw, Trash2, Layers, History, X, Banknote } from 'lucide-react';
 import BASE_URL from '../endpoints/endpoints';
@@ -109,9 +109,9 @@ const OtherDashboard = () => {
 
   // Listen for real-time product stock updates
   useEffect(() => {
-    const socket = socketIO(BASE_URL, { transports: ['websocket', 'polling'] });
-    socket.on('product:stock-update', () => { fetchProducts(); });
-    return () => socket.disconnect();
+    const socket = getSocket();
+    socket.on('product:stock-update', fetchProducts);
+    return () => socket.off('product:stock-update', fetchProducts);
   }, [fetchProducts]);
 
   useEffect(() => {

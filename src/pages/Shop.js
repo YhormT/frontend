@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import axios from 'axios';
-import { Search, Phone, CheckCircle, XCircle, Clock, Package, Filter, Loader2, Shield, Zap, Wifi, Star, ArrowRight, MessageSquareWarning, X } from 'lucide-react';
+import { Search, Phone, CheckCircle, XCircle, Clock, Package, Filter, Loader2, Shield, Zap, Wifi, Star, ArrowRight, MessageSquareWarning, X, AlertTriangle } from 'lucide-react';
 import Swal from 'sweetalert2';
 import BASE_URL from '../endpoints/endpoints';
 import ComplaintModal from '../components/ComplaintModal';
 import ShopAnnouncementBanner from '../components/ShopAnnouncementBanner';
 import ShopFloatingChatButton from '../components/ShopFloatingChatButton';
+import getSocket from '../utils/socket';
 
 
 const Shop = () => {
@@ -15,6 +16,8 @@ const Shop = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showTrackingModal, setShowTrackingModal] = useState(false);
   const [showComplaintModal, setShowComplaintModal] = useState(false);
+  const [shopAlert, setShopAlert] = useState(null);
+  const [showShopAlert, setShowShopAlert] = useState(false);
   const [mobileNumber, setMobileNumber] = useState('');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [trackedOrders, setTrackedOrders] = useState([]);
@@ -26,9 +29,38 @@ const Shop = () => {
   const [paymentMessage, setPaymentMessage] = useState('');
   const filterRef = useRef(null);
 
+  const fetchProducts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get(`${BASE_URL}/api/shop/products`);
+      setProducts(response.data || []);
+    } catch (error) {
+      console.error('Error fetching shop products:', error);
+      setProducts([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchProducts();
-  }, []);
+    // Fetch shop alert popup on every visit
+    axios.get(`${BASE_URL}/api/announcement/shop-alert`)
+      .then(res => {
+        if (res.data?.success && res.data?.data) {
+          setShopAlert(res.data.data);
+          setShowShopAlert(true);
+        }
+      })
+      .catch(() => {});
+  }, [fetchProducts]);
+
+  // Real-time stock updates via socket
+  useEffect(() => {
+    const socket = getSocket();
+    socket.on('product:stock-update', fetchProducts);
+    return () => socket.off('product:stock-update', fetchProducts);
+  }, [fetchProducts]);
 
   // Handle Paystack callback redirect
   useEffect(() => {
@@ -49,18 +81,6 @@ const Shop = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchProducts = async () => {
-    setIsLoading(true);
-    try {
-      const response = await axios.get(`${BASE_URL}/api/shop/products`);
-      setProducts(response.data || []);
-    } catch (error) {
-      console.error('Error fetching shop products:', error);
-      setProducts([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleOrderClick = (product) => {
     if (product.stock <= 0 || product.shopStockClosed) {
@@ -624,6 +644,34 @@ const Shop = () => {
 
       <ComplaintModal isOpen={showComplaintModal} onClose={() => setShowComplaintModal(false)} />
       <ShopFloatingChatButton />
+
+      {/* Shop Alert Popup - shows every visit, only closes on OK */}
+      {showShopAlert && shopAlert && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-dark-800 border border-red-500/40 rounded-2xl shadow-2xl shadow-red-500/10 w-full max-w-md overflow-hidden">
+            <div className="bg-gradient-to-r from-red-600 to-orange-600 p-5 flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-xl flex-shrink-0">
+                <AlertTriangle className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">{shopAlert.title}</h2>
+                <p className="text-red-100 text-xs mt-0.5">Important Notice</p>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-dark-200 leading-relaxed whitespace-pre-wrap">{shopAlert.message}</p>
+            </div>
+            <div className="px-6 pb-6">
+              <button
+                onClick={() => setShowShopAlert(false)}
+                className="w-full py-3.5 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-red-500/25"
+              >
+                Okay, I Understand
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
