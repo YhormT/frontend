@@ -4,6 +4,8 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 import BASE_URL from '../endpoints/endpoints';
 
+const getAuthHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+
 const ProductDialog = ({ isOpen, onClose }) => {
   const [productId, setProductId] = useState(null);
   const [productName, setProductName] = useState('');
@@ -25,7 +27,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
   const fetchProducts = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`${BASE_URL}/products`);
+      const response = await axios.get(`${BASE_URL}/products`, { headers: getAuthHeaders() });
       setProducts(response.data);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -67,10 +69,10 @@ const ProductDialog = ({ isOpen, onClose }) => {
       const productData = { name: productName, description, price: parseFloat(price), stock: parseInt(stock, 10), promoPrice: promoPrice !== '' ? parseFloat(promoPrice) : null };
 
       if (productId) {
-        await axios.put(`${BASE_URL}/products/update/${productId}`, productData);
+        await axios.put(`${BASE_URL}/products/update/${productId}`, productData, { headers: getAuthHeaders() });
         Swal.fire({ title: 'Updated!', text: 'Product updated successfully.', icon: 'success', background: '#1e293b', color: '#f1f5f9', timer: 1500 });
       } else {
-        await axios.post(`${BASE_URL}/products/add`, productData);
+        await axios.post(`${BASE_URL}/products/add`, productData, { headers: getAuthHeaders() });
         Swal.fire({ title: 'Success!', text: 'Product added successfully.', icon: 'success', background: '#1e293b', color: '#f1f5f9', timer: 1500 });
       }
       fetchProducts();
@@ -92,7 +94,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
     if (result.isConfirmed) {
       setIsLoading(true);
       try {
-        await axios.delete(`${BASE_URL}/products/delete/${id}`);
+        await axios.delete(`${BASE_URL}/products/delete/${id}`, { headers: getAuthHeaders() });
         setProducts(products.filter((p) => p.id !== id));
         Swal.fire({ title: 'Deleted!', text: 'Product deleted.', icon: 'success', background: '#1e293b', color: '#f1f5f9', timer: 1500 });
       } catch (error) {
@@ -105,7 +107,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
 
   const handleToggleShop = async (id, currentValue) => {
     try {
-      await axios.put(`${BASE_URL}/products/toggle-shop/${id}`, { showInShop: !currentValue });
+      await axios.put(`${BASE_URL}/products/toggle-shop/${id}`, { showInShop: !currentValue }, { headers: getAuthHeaders() });
       setProducts(products.map(p => p.id === id ? { ...p, showInShop: !currentValue } : p));
     } catch (error) {
       console.error('Error toggling shop visibility:', error);
@@ -114,7 +116,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
 
   const handleToggleShopStock = async (id, currentValue) => {
     try {
-      await axios.put(`${BASE_URL}/products/update/${id}`, { shopStockClosed: !currentValue });
+      await axios.put(`${BASE_URL}/products/update/${id}`, { shopStockClosed: !currentValue }, { headers: getAuthHeaders() });
       setProducts(products.map(p => p.id === id ? { ...p, shopStockClosed: !currentValue } : p));
       Swal.fire({ 
         title: !currentValue ? 'Stock Closed' : 'Stock Opened', 
@@ -133,7 +135,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
 
   const handleSetStock = async (id, stockValue) => {
     try {
-      await axios.put(`${BASE_URL}/products/update/${id}`, { stock: stockValue });
+      await axios.put(`${BASE_URL}/products/update/${id}`, { stock: stockValue }, { headers: getAuthHeaders() });
       setProducts(products.map(p => p.id === id ? { ...p, stock: stockValue } : p));
       Swal.fire({ 
         title: 'Stock Updated!', 
@@ -152,7 +154,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
 
   const handleBulkSetStock = async (carrier, stockValue) => {
     try {
-      await axios.patch(`${BASE_URL}/products/bulk-stock-by-carrier`, { carrier, stock: stockValue });
+      await axios.patch(`${BASE_URL}/products/bulk-stock-by-carrier`, { carrier, stock: stockValue }, { headers: getAuthHeaders() });
       setProducts(products.map(p => 
         p.name?.toUpperCase().includes(carrier.toUpperCase()) ? { ...p, stock: stockValue } : p
       ));
@@ -173,7 +175,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
 
   const handleBulkShopStock = async (closeStock) => {
     try {
-      await axios.patch(`${BASE_URL}/products/bulk-shop-stock`, { closeStock });
+      await axios.patch(`${BASE_URL}/products/bulk-shop-stock`, { closeStock }, { headers: getAuthHeaders() });
       setProducts(products.map(p => 
         p.showInShop ? { ...p, shopStockClosed: closeStock } : p
       ));
@@ -194,7 +196,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
 
   const handleToggleAgent = async (id, currentValue) => {
     try {
-      await axios.put(`${BASE_URL}/products/toggle-agent/${id}`, { showForAgents: !currentValue });
+      await axios.put(`${BASE_URL}/products/toggle-agent/${id}`, { showForAgents: !currentValue }, { headers: getAuthHeaders() });
       setProducts(products.map(p => p.id === id ? { ...p, showForAgents: !currentValue } : p));
     } catch (error) {
       console.error('Error toggling agent visibility:', error);
@@ -204,7 +206,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
 
   const handleTogglePromo = async (id, currentValue) => {
     try {
-      await axios.put(`${BASE_URL}/products/toggle-promo/${id}`, { usePromoPrice: !currentValue });
+      await axios.put(`${BASE_URL}/products/toggle-promo/${id}`, { usePromoPrice: !currentValue }, { headers: getAuthHeaders() });
       setProducts(products.map(p => p.id === id ? { ...p, usePromoPrice: !currentValue } : p));
     } catch (error) {
       console.error('Error toggling promo price:', error);
@@ -215,7 +217,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
   const handleBulkTogglePromo = async (usePromoPrice) => {
     try {
       const carrier = searchQuery.trim() || null;
-      await axios.patch(`${BASE_URL}/products/bulk-toggle-promo`, { usePromoPrice, carrier });
+      await axios.patch(`${BASE_URL}/products/bulk-toggle-promo`, { usePromoPrice, carrier }, { headers: getAuthHeaders() });
       if (carrier) {
         setProducts(products.map(p => 
           p.name?.toLowerCase().includes(carrier.toLowerCase()) ? { ...p, usePromoPrice } : p
@@ -243,7 +245,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
   const handleBulkAgentVisibility = async (showForAgents) => {
     try {
       const carrier = searchQuery.trim() || null;
-      await axios.patch(`${BASE_URL}/products/bulk-agent-visibility`, { showForAgents, carrier });
+      await axios.patch(`${BASE_URL}/products/bulk-agent-visibility`, { showForAgents, carrier }, { headers: getAuthHeaders() });
       if (carrier) {
         setProducts(products.map(p => 
           p.name?.toLowerCase().includes(carrier.toLowerCase()) ? { ...p, showForAgents } : p

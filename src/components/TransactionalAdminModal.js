@@ -22,6 +22,8 @@ const formatPhoneNumber = (phone) => {
   return phoneStr;
 };
 
+const getAuthHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+
 const TransactionalAdminModal = ({ isOpen, onClose }) => {
   const [transactions, setTransactions] = useState([]);
   const [shopOrders, setShopOrders] = useState([]);
@@ -49,9 +51,10 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
     try {
+      const headers = getAuthHeaders();
       const [txRes, ordersRes] = await Promise.all([
-        axios.get(`${BASE_URL}/api/transactions?limit=999999`),
-        axios.get(`${BASE_URL}/order/admin/allorder?limit=999999`)
+        axios.get(`${BASE_URL}/api/transactions?limit=999999`, { headers }),
+        axios.get(`${BASE_URL}/order/admin/allorder?limit=999999`, { headers })
       ]);
       if (txRes.data.success) {
         setTransactions(txRes.data.data || []);
@@ -69,7 +72,7 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
   const fetchShopOrders = useCallback(async () => {
     setShopLoading(true);
     try {
-      const res = await axios.get(`${BASE_URL}/api/shop/orders`);
+      const res = await axios.get(`${BASE_URL}/api/shop/orders`, { headers: getAuthHeaders() });
       if (res.data.success) {
         setShopOrders(res.data.orders || []);
       }
@@ -89,7 +92,7 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
       if (referralFilters.startDate) params.append('startDate', referralFilters.startDate);
       if (referralFilters.endDate) params.append('endDate', referralFilters.endDate);
       
-      const res = await axios.get(`${BASE_URL}/api/storefront/admin/referrals?${params.toString()}`);
+      const res = await axios.get(`${BASE_URL}/api/storefront/admin/referrals?${params.toString()}`, { headers: getAuthHeaders() });
       if (res.data.success) {
         setReferralData({
           orders: res.data.orders || [],
@@ -358,7 +361,7 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
   // Handle marking commissions as paid
   const handleMarkCommissionPaid = async (agentId, orderIds) => {
     try {
-      await axios.post(`${BASE_URL}/api/storefront/admin/commissions/pay`, { agentId, orderIds });
+      await axios.post(`${BASE_URL}/api/storefront/admin/commissions/pay`, { agentId, orderIds }, { headers: getAuthHeaders() });
       Swal.fire({ icon: 'success', title: 'Success', text: 'Commissions marked as paid', timer: 1500, background: '#1e293b', color: '#f1f5f9', showConfirmButton: false });
       fetchReferralOrders();
     } catch (error) {

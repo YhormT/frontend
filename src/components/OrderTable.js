@@ -6,6 +6,8 @@ import * as XLSX from 'xlsx';
 import BASE_URL from '../endpoints/endpoints';
 import { io as socketIO } from 'socket.io-client';
 
+const getAuthHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+
 const OrderTable = ({ isOpen, onClose }) => {
   const [allItems, setAllItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -53,7 +55,7 @@ const OrderTable = ({ isOpen, onClose }) => {
 
       const response = await axios.get(`${BASE_URL}/order/admin/allorder`, {
         timeout: 30000,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         params
       });
       
@@ -207,7 +209,7 @@ const OrderTable = ({ isOpen, onClose }) => {
           try {
             Swal.fire({ title: `Updating ${eligibleItems.length} orders...`, allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e293b', color: '#f1f5f9' });
             const allResults = await Promise.allSettled(
-              eligibleItems.map(item => axios.post(`${BASE_URL}/order/admin/process/order`, { orderItemId: item.id, status }))
+              eligibleItems.map(item => axios.post(`${BASE_URL}/order/admin/process/order`, { orderItemId: item.id, status }, { headers: getAuthHeaders() }))
             );
             const successCount = allResults.filter(r => r.status === 'fulfilled').length;
             const failCount = allResults.filter(r => r.status === 'rejected').length;
@@ -232,7 +234,7 @@ const OrderTable = ({ isOpen, onClose }) => {
     // Single item update
     try {
       Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e293b', color: '#f1f5f9' });
-      await axios.post(`${BASE_URL}/order/admin/process/order`, { orderItemId, status });
+      await axios.post(`${BASE_URL}/order/admin/process/order`, { orderItemId, status }, { headers: getAuthHeaders() });
       Swal.fire({ icon: 'success', title: 'Status Updated', timer: 1500, background: '#1e293b', color: '#f1f5f9' });
       fetchOrders();
     } catch (error) {
@@ -254,7 +256,7 @@ const OrderTable = ({ isOpen, onClose }) => {
     if (!isConfirmed) return;
     try {
       Swal.fire({ title: 'Completing all processing orders...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e293b', color: '#f1f5f9' });
-      const response = await axios.post(`${BASE_URL}/order/admin/batch-complete`);
+      const response = await axios.post(`${BASE_URL}/order/admin/batch-complete`, {}, { headers: getAuthHeaders() });
       Swal.fire({ icon: 'success', title: 'Batch Complete', text: response.data.message, timer: 2000, background: '#1e293b', color: '#f1f5f9' });
       fetchOrders();
     } catch (error) {
@@ -305,7 +307,7 @@ const OrderTable = ({ isOpen, onClose }) => {
     if (statusUpdateNeeded && pendingOrderIds.length > 0) {
       try {
         Swal.fire({ title: 'Updating status...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e293b', color: '#f1f5f9' });
-        await Promise.all(pendingOrderIds.map(id => axios.put(`${BASE_URL}/order/orders/${id}/status`, { status: 'Processing' })));
+        await Promise.all(pendingOrderIds.map(id => axios.put(`${BASE_URL}/order/orders/${id}/status`, { status: 'Processing' }, { headers: getAuthHeaders() })));
         Swal.fire({ icon: 'success', title: 'Status Updated', timer: 2000, background: '#1e293b', color: '#f1f5f9' });
         fetchOrders();
       } catch (error) {

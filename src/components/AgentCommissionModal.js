@@ -9,6 +9,8 @@ const formatAmount = (amount) => {
   return `GHS ${num.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
+const getAuthHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+
 const AgentCommissionModal = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState({ orders: [], stats: {}, agentSummary: [] });
@@ -25,14 +27,16 @@ const AgentCommissionModal = ({ isOpen, onClose }) => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      const headers = getAuthHeaders();
       const [ordersRes, weeklyRes] = await Promise.all([
         axios.get(`${BASE_URL}/api/storefront/admin/referrals`, {
+          headers,
           params: {
             startDate: dateRange.start || undefined,
             endDate: dateRange.end || undefined
           }
         }),
-        axios.get(`${BASE_URL}/api/storefront/admin/commissions/weekly`)
+        axios.get(`${BASE_URL}/api/storefront/admin/commissions/weekly`, { headers })
       ]);
 
       if (ordersRes.data.success) {
@@ -236,7 +240,7 @@ const AgentCommissionModal = ({ isOpen, onClose }) => {
           agentId,
           orderIds: ordersToPay,
           paymentMethod
-        });
+        }, { headers: getAuthHeaders() });
 
         if (res.data.success) {
           Swal.fire({

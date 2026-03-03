@@ -4,6 +4,8 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 import BASE_URL from '../endpoints/endpoints';
 
+const getAuthHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+
 const TopUp = ({ isOpen, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [amount, setAmount] = useState('');
@@ -49,7 +51,7 @@ const TopUp = ({ isOpen, onClose, onSuccess }) => {
       const response = await axios.post(`${BASE_URL}/api/topup/initialize`, {
         userId: parseInt(userId, 10),
         amount: topupAmount
-      });
+      }, { headers: getAuthHeaders() });
 
       if (response.data.success) {
         setExternalRef(response.data.externalRef);
@@ -89,7 +91,7 @@ const TopUp = ({ isOpen, onClose, onSuccess }) => {
     try {
       const response = await axios.post(`${BASE_URL}/api/topup/verify`, {
         reference: externalRef
-      });
+      }, { headers: getAuthHeaders() });
 
       if (response.data.success) {
         await Swal.fire({
@@ -162,7 +164,7 @@ const TopUp = ({ isOpen, onClose, onSuccess }) => {
       const response = await axios.post(`${BASE_URL}/api/verify-sms`, {
         userId: parseInt(userId, 10),
         referenceId: transactionId
-      });
+      }, { headers: getAuthHeaders() });
 
       if (response.data.success) {
         await Swal.fire({

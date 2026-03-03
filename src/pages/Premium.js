@@ -30,6 +30,7 @@ const Premium = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [orderHistory, setOrderHistory] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitInProgress = useRef(false);
   const [showTransactions, setShowTransactions] = useState(false);
   const [showUploadExcel, setShowUploadExcel] = useState(false);
   const [showPasteOrders, setShowPasteOrders] = useState(false);
@@ -37,11 +38,12 @@ const Premium = () => {
   const [isSuspended, setIsSuspended] = useState(localStorage.getItem('isSuspended') === 'true');
 
   const userName = localStorage.getItem('name') || 'Premium User';
+  const getAuthHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
   const fetchLoanBalance = useCallback(async () => {
     const userId = localStorage.getItem('userId');
     try {
-      const response = await axios.get(`${BASE_URL}/api/users/loan/${userId}`);
+      const response = await axios.get(`${BASE_URL}/api/users/loan/${userId}`, { headers: getAuthHeaders() });
       setLoanBalance(response.data);
     } catch (err) {
       console.error('Error fetching loan balance:', err);
@@ -60,7 +62,7 @@ const Premium = () => {
   const fetchCart = useCallback(async () => {
     try {
       const userId = localStorage.getItem('userId');
-      const response = await axios.get(`${BASE_URL}/api/cart/${userId}`);
+      const response = await axios.get(`${BASE_URL}/api/cart/${userId}`, { headers: getAuthHeaders() });
       setCart(Array.isArray(response.data.items) ? response.data.items : []);
     } catch (error) {
       setCart([]);
@@ -70,7 +72,7 @@ const Premium = () => {
   const fetchOrderHistory = useCallback(async () => {
     const userId = localStorage.getItem('userId');
     try {
-      const response = await axios.get(`${BASE_URL}/order/admin/${userId}`);
+      const response = await axios.get(`${BASE_URL}/order/admin/${userId}`, { headers: getAuthHeaders() });
       setOrderHistory(response.data || []);
     } catch (error) {
       console.error('Error fetching order history:', error);
@@ -94,7 +96,7 @@ const Premium = () => {
     fetchData();
     const userId = localStorage.getItem('userId');
     if (userId) {
-      axios.get(`${BASE_URL}/api/users/${userId}`).then(res => {
+      axios.get(`${BASE_URL}/api/users/${userId}`, { headers: getAuthHeaders() }).then(res => {
         const suspended = res.data?.isSuspended === true;
         setIsSuspended(suspended);
         localStorage.setItem('isSuspended', suspended ? 'true' : 'false');
@@ -220,7 +222,7 @@ const Premium = () => {
     const result = await Swal.fire({ title: 'Remove?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', background: '#1e293b', color: '#f1f5f9' });
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${BASE_URL}/api/cart/remove/${cartItemId}`);
+        await axios.delete(`${BASE_URL}/api/cart/remove/${cartItemId}`, { headers: getAuthHeaders() });
         setCart(prev => prev.filter(item => item.id !== cartItemId));
       } catch (error) {}
     }
@@ -231,7 +233,7 @@ const Premium = () => {
     const result = await Swal.fire({ title: 'Clear Cart?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', background: '#1e293b', color: '#f1f5f9' });
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${BASE_URL}/api/cart/${userId}/clear`);
+        await axios.delete(`${BASE_URL}/api/cart/${userId}/clear`, { headers: getAuthHeaders() });
         setCart([]);
       } catch (error) {}
     }
@@ -244,10 +246,12 @@ const Premium = () => {
   }, 0);
 
   const submitCart = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || submitInProgress.current) return;
+    submitInProgress.current = true;
     const userId = parseInt(localStorage.getItem('userId'), 10);
     const freshBalance = Math.abs(parseFloat(loanBalance?.loanBalance || 0));
     if (cartTotal > freshBalance) {
+      submitInProgress.current = false;
       Swal.fire({ icon: 'warning', title: 'Insufficient Funds', background: '#1e293b', color: '#f1f5f9' });
       return;
     }
@@ -264,6 +268,7 @@ const Premium = () => {
       fetchCart(); fetchLoanBalance();
     }).finally(() => {
       setIsSubmitting(false);
+      submitInProgress.current = false;
     });
   };
 

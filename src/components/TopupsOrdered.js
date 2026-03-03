@@ -4,6 +4,8 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 import BASE_URL from '../endpoints/endpoints';
 
+const getAuthHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+
 const TopupsOrdered = ({ isOpen = false, onClose, justCount = 0, hasNewTopups = false, setHasNewTopups }) => {
   const [topups, setTopups] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -13,7 +15,7 @@ const TopupsOrdered = ({ isOpen = false, onClose, justCount = 0, hasNewTopups = 
   const fetchTopups = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${BASE_URL}/api/topups?startDate=2024-03-01&endDate=2030-03-14`);
+      const response = await axios.get(`${BASE_URL}/api/topups?startDate=2024-03-01&endDate=2030-03-14`, { headers: getAuthHeaders() });
       setTopups(response.data || []);
       if (setHasNewTopups) setHasNewTopups(false);
     } catch (error) {
@@ -42,7 +44,7 @@ const TopupsOrdered = ({ isOpen = false, onClose, justCount = 0, hasNewTopups = 
 
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${BASE_URL}/api/topups/${topupId}`);
+        await axios.delete(`${BASE_URL}/api/topups/${topupId}`, { headers: getAuthHeaders() });
         Swal.fire({
           icon: 'success',
           title: 'Deleted!',
