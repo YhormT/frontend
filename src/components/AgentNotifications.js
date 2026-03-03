@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { Bell, X, CheckCircle, Megaphone, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import BASE_URL from '../endpoints/endpoints';
+import getSocket from '../utils/socket';
 
 // Notification sound
 const notificationSound = new Audio('/notification-sound.mp3');
@@ -70,6 +71,17 @@ const AgentNotifications = () => {
     const interval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(interval);
   }, [fetchUnreadCount]);
+
+  // Real-time announcement updates via socket
+  useEffect(() => {
+    const socket = getSocket();
+    const handleAnnouncementUpdate = () => {
+      fetchUnreadCount();
+      if (isOpen) fetchNotifications();
+    };
+    socket.on('announcement:new', handleAnnouncementUpdate);
+    return () => socket.off('announcement:new', handleAnnouncementUpdate);
+  }, [fetchUnreadCount, fetchNotifications, isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -188,8 +200,8 @@ const AgentNotifications = () => {
       {/* Notification Detail Modal - Also using Portal */}
       {selectedNotification && ReactDOM.createPortal(
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[10000] p-4" onClick={() => setSelectedNotification(null)}>
-          <div className="bg-dark-800 border border-dark-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-4 flex items-center justify-between">
+          <div className="bg-dark-800 border border-dark-700 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-4 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
                 <Megaphone className="w-5 h-5 text-white" />
                 <h3 className="font-bold text-white">Announcement</h3>
@@ -198,7 +210,7 @@ const AgentNotifications = () => {
                 <X className="w-4 h-4 text-white" />
               </button>
             </div>
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto flex-1">
               <h2 className="text-xl font-bold text-white mb-2">{selectedNotification.title}</h2>
               <p className="text-dark-300 whitespace-pre-wrap">{selectedNotification.message}</p>
               <div className="flex items-center gap-2 mt-4 text-dark-500 text-sm">
