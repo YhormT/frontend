@@ -52,7 +52,7 @@ const NormalAgent = () => {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const response = await axios.get(`${BASE_URL}/products/agent-products`);
+      const response = await axios.get(`${BASE_URL}/products/agent-products`, { headers: getAuthHeaders() });
       setProducts(response.data || []);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -82,13 +82,13 @@ const NormalAgent = () => {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      await Promise.all([fetchProducts(), fetchLoanBalance(), fetchCart()]);
+      await Promise.all([fetchProducts(), fetchLoanBalance(), fetchCart(), fetchOrderHistory()]);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [fetchProducts, fetchLoanBalance, fetchCart]);
+  }, [fetchProducts, fetchLoanBalance, fetchCart, fetchOrderHistory]);
 
   useEffect(() => {
     const role = localStorage.getItem('role');
