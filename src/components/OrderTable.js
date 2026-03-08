@@ -170,68 +170,8 @@ const OrderTable = ({ isOpen, onClose }) => {
     return true;
   });
 
-
-  // Check if any filters are active (date, time, product, status, phone, source, orderId)
-  const hasActiveFilters = selectedDate || startTime || endTime || selectedProduct || selectedStatus || phoneNumberFilter || sourceFilter || orderIdFilter;
-
   const handleProcessOrder = async (orderItemId, status) => {
-    // If filters are active, offer to update all filtered orders
-    if (hasActiveFilters && filteredItems.length > 1) {
-      const eligibleItems = filteredItems.filter(item => {
-        const currentStatus = item.order?.items?.[0]?.status;
-        if (currentStatus === status) return false; // Already in target status
-        if (status === 'Completed' && (currentStatus === 'Pending' || currentStatus === 'Processing')) return true;
-        if (status === 'Processing' && (currentStatus === 'Pending' || currentStatus === 'Completed')) return true;
-        if (status === 'Cancelled' && (currentStatus === 'Pending' || currentStatus === 'Processing')) return true;
-        return false;
-      });
-
-      if (eligibleItems.length > 1) {
-        const result = await Swal.fire({
-          icon: 'question',
-          title: 'Update Filtered Orders?',
-          html: `You have <b>${filteredItems.length}</b> orders in the current filtered view.<br/><b>${eligibleItems.length}</b> can be updated to <b>${status}</b>.<br/><br/>Update just this one or all filtered orders?`,
-          showCancelButton: true,
-          showDenyButton: true,
-          confirmButtonText: `Update All ${eligibleItems.length}`,
-          denyButtonText: 'Just This One',
-          cancelButtonText: 'Cancel',
-          confirmButtonColor: '#6366f1',
-          denyButtonColor: '#64748b',
-          background: '#1e293b',
-          color: '#f1f5f9'
-        });
-
-        if (result.isDismissed) return; // Cancelled
-
-        if (result.isConfirmed) {
-          // Update all eligible filtered items
-          try {
-            Swal.fire({ title: `Updating ${eligibleItems.length} orders...`, allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e293b', color: '#f1f5f9' });
-            const allResults = await Promise.allSettled(
-              eligibleItems.map(item => axios.post(`${BASE_URL}/order/admin/process/order`, { orderItemId: item.id, status }, { headers: getAuthHeaders() }))
-            );
-            const successCount = allResults.filter(r => r.status === 'fulfilled').length;
-            const failCount = allResults.filter(r => r.status === 'rejected').length;
-            Swal.fire({
-              icon: failCount === 0 ? 'success' : 'warning',
-              title: 'Bulk Update Complete',
-              text: `${successCount} updated successfully${failCount > 0 ? `, ${failCount} failed` : ''}`,
-              timer: 2000,
-              background: '#1e293b',
-              color: '#f1f5f9'
-            });
-            fetchOrders();
-          } catch (error) {
-            Swal.fire({ icon: 'error', title: 'Bulk Update Failed', text: error.message, background: '#1e293b', color: '#f1f5f9' });
-          }
-          return;
-        }
-        // If denied (Just This One), fall through to single update below
-      }
-    }
-
-    // Single item update
+    // Always update only the single clicked item
     try {
       Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e293b', color: '#f1f5f9' });
       await axios.post(`${BASE_URL}/order/admin/process/order`, { orderItemId, status }, { headers: getAuthHeaders() });
@@ -265,54 +205,52 @@ const OrderTable = ({ isOpen, onClose }) => {
   };
 
   const handleDownloadExcel = async () => {
-    let itemsToExport = [];
-    let pendingOrderIds = [];
-    let statusUpdateNeeded = false;
+    try {
+      Swal.fire({ title: 'Fetching orders...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e293b', color: '#f1f5f9' });
 
-    if (selectedStatus) {
-      itemsToExport = allItems.filter(item => item.order?.items?.[0]?.status === selectedStatus);
-      if (selectedStatus === 'Pending') {
-        statusUpdateNeeded = true;
-        pendingOrderIds = [...new Set(itemsToExport.map(item => item.order?.id))].filter(Boolean);
+      const params = {
+        statusFilter: selectedStatus || undefined,
+        selectedProduct: selectedProduct || undefined,
+        selectedDate: selectedDate || undefined,
+        sortOrder: sortOrder,
+        sourceFilter: sourceFilter || undefined,
+        phoneNumberFilter: phoneNumberFilter || undefined,
+        orderIdFilter: orderIdFilter || undefined,
+        startTime: startTime || undefined,
+        endTime: endTime || undefined
+      };
+      Object.keys(params).forEach(key => { if (params[key] === undefined) delete params[key]; });
+
+      const response = await axios.get(`${BASE_URL}/order/admin/download-excel`, {
+        headers: getAuthHeaders(),
+        params,
+        timeout: 120000
+      });
+
+      const { items, updatedCount } = response.data;
+
+      if (!items || items.length === 0) {
+        Swal.fire({ icon: 'warning', title: 'No Orders Available', background: '#1e293b', color: '#f1f5f9' });
+        return;
       }
-    } else {
-      const nonCancelled = allItems.filter(item => !['Cancelled', 'Canceled'].includes(item.order?.items?.[0]?.status));
-      const pending = nonCancelled.filter(item => item.order?.items?.[0]?.status === 'Pending');
-      if (pending.length > 0) {
-        itemsToExport = pending;
-        statusUpdateNeeded = true;
-        pendingOrderIds = [...new Set(pending.map(item => item.order?.id))].filter(Boolean);
-      } else {
-        itemsToExport = nonCancelled.filter(item => item.order?.items?.[0]?.status === 'Processing');
-        if (itemsToExport.length === 0) itemsToExport = nonCancelled.filter(item => item.order?.items?.[0]?.status === 'Completed');
-      }
-    }
 
-    if (!itemsToExport.length) {
-      Swal.fire({ icon: 'warning', title: 'No Orders Available', background: '#1e293b', color: '#f1f5f9' });
-      return;
-    }
+      const dataToExport = items.map(item => {
+        let phone = item?.mobileNumber || 'N/A';
+        if (phone.startsWith('233')) phone = '0' + phone.substring(3);
+        return { 'Phone Number': phone, 'Data Size': item.product?.description?.replace(/\D+$/, '') || 'N/A' };
+      });
 
-    const dataToExport = itemsToExport.map(item => {
-      let phone = item?.mobileNumber || 'N/A';
-      if (phone.startsWith('233')) phone = '0' + phone.substring(3);
-      return { 'Phone Number': phone, 'Data Size': item.product?.description?.replace(/\D+$/, '') || 'N/A' };
-    });
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Orders');
+      XLSX.writeFile(wb, `Orders_${new Date().toISOString().slice(0, 10)}.xlsx`);
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Orders');
-    XLSX.writeFile(wb, `Orders_${new Date().toISOString().slice(0, 10)}.xlsx`);
-
-    if (statusUpdateNeeded && pendingOrderIds.length > 0) {
-      try {
-        Swal.fire({ title: 'Updating status...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e293b', color: '#f1f5f9' });
-        await Promise.all(pendingOrderIds.map(id => axios.put(`${BASE_URL}/order/orders/${id}/status`, { status: 'Processing' }, { headers: getAuthHeaders() })));
-        Swal.fire({ icon: 'success', title: 'Status Updated', timer: 2000, background: '#1e293b', color: '#f1f5f9' });
-        fetchOrders();
-      } catch (error) {
-        Swal.fire({ icon: 'error', title: 'Status Update Failed', background: '#1e293b', color: '#f1f5f9' });
-      }
+      const msg = updatedCount > 0 ? `Downloaded ${items.length} orders. ${updatedCount} pending orders updated to Processing.` : `Downloaded ${items.length} orders.`;
+      Swal.fire({ icon: 'success', title: 'Download Complete', text: msg, timer: 3000, background: '#1e293b', color: '#f1f5f9' });
+      fetchOrders();
+    } catch (error) {
+      console.error('Download error:', error);
+      Swal.fire({ icon: 'error', title: 'Download Failed', text: error.response?.data?.error || error.message, background: '#1e293b', color: '#f1f5f9' });
     }
   };
 
