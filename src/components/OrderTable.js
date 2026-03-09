@@ -183,20 +183,33 @@ const OrderTable = ({ isOpen, onClose }) => {
   };
 
   const handleBatchComplete = async () => {
-    // Check if there are any processing orders in the database
     if (statusCounts.processing === 0) {
       Swal.fire({ icon: 'info', title: 'No Processing Orders', text: 'There are no orders with Processing status to complete.', background: '#1e293b', color: '#f1f5f9' });
       return;
     }
+    const hasFilters = selectedDate || startTime || endTime || selectedProduct || sourceFilter || phoneNumberFilter || orderIdFilter;
+    const promptText = hasFilters
+      ? 'Complete filtered processing orders only?'
+      : `Complete ALL ${statusCounts.processing} processing orders in the database?`;
     const { isConfirmed } = await Swal.fire({
-      icon: 'question', title: 'Batch Complete All',
-      text: `Complete ALL ${statusCounts.processing} processing orders in the database?`,
+      icon: 'question', title: 'Batch Complete',
+      text: promptText,
       showCancelButton: true, background: '#1e293b', color: '#f1f5f9'
     });
     if (!isConfirmed) return;
     try {
-      Swal.fire({ title: 'Completing all processing orders...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e293b', color: '#f1f5f9' });
-      const response = await axios.post(`${BASE_URL}/order/admin/batch-complete`, {}, { headers: getAuthHeaders() });
+      Swal.fire({ title: 'Completing processing orders...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), background: '#1e293b', color: '#f1f5f9' });
+      const filters = {
+        selectedProduct: selectedProduct || undefined,
+        selectedDate: selectedDate || undefined,
+        sourceFilter: sourceFilter || undefined,
+        phoneNumberFilter: phoneNumberFilter || undefined,
+        orderIdFilter: orderIdFilter || undefined,
+        startTime: startTime || undefined,
+        endTime: endTime || undefined
+      };
+      Object.keys(filters).forEach(key => { if (filters[key] === undefined) delete filters[key]; });
+      const response = await axios.post(`${BASE_URL}/order/admin/batch-complete`, filters, { headers: getAuthHeaders() });
       Swal.fire({ icon: 'success', title: 'Batch Complete', text: response.data.message, timer: 2000, background: '#1e293b', color: '#f1f5f9' });
       fetchOrders();
     } catch (error) {
