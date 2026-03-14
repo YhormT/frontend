@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { X, RefreshCw, Loader2, Search, Calendar, Clock, Filter, AlertTriangle, Volume2, VolumeX, ChevronDown, ChevronUp, Wifi } from 'lucide-react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import { io as socketIO } from 'socket.io-client';
 import BASE_URL from '../endpoints/endpoints';
 
 const getAuthHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
@@ -31,6 +32,11 @@ const OrderTracker = ({ isOpen, onClose, onFraudDetected }) => {
   const [fraudAlerts, setFraudAlerts] = useState([]);
   const [agents, setAgents] = useState([]);
   const [products, setProducts] = useState([]);
+  const [resolvedIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('resolvedFraudAlerts') || '[]');
+    } catch { return []; }
+  });
 
   const [selectedAgent, setSelectedAgent] = useState('');
   const [agentSearch, setAgentSearch] = useState('');
@@ -50,6 +56,7 @@ const OrderTracker = ({ isOpen, onClose, onFraudDetected }) => {
   const fraudAudioRef = useRef(null);
   const agentDropdownRef = useRef(null);
   const prevFraudCountRef = useRef(0);
+  const fraudSoundEnabledRef = useRef(true);
 
   const fetchFilters = useCallback(async () => {
     try {
@@ -63,6 +70,10 @@ const OrderTracker = ({ isOpen, onClose, onFraudDetected }) => {
       console.error('Error fetching filters:', e);
     }
   }, []);
+
+  useEffect(() => {
+    fraudSoundEnabledRef.current = fraudSoundEnabled;
+  }, [fraudSoundEnabled]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -81,32 +92,47 @@ const OrderTracker = ({ isOpen, onClose, onFraudDetected }) => {
       if (res.data.success) {
         setTableData(res.data.tableData || []);
         setNetworkSummary(res.data.networkSummary || { mtn: { count: 0, total: 0 }, telecel: { count: 0, total: 0 }, airteltigo: { count: 0, total: 0 } });
-        const alerts = res.data.fraudAlerts || [];
-        setFraudAlerts(alerts);
+        const allAlerts = res.data.fraudAlerts || [];
+        setFraudAlerts(allAlerts);
 
-        if (alerts.length > 0 && alerts.length > prevFraudCountRef.current) {
-          if (onFraudDetected) onFraudDetected(alerts);
-          if (fraudSoundEnabled && fraudAudioRef.current) {
+        // Filter out resolved alerts
+        const resolvedList = JSON.parse(localStorage.getItem('resolvedFraudAlerts') || '[]');
+        const activeAlerts = allAlerts.filter(a => !resolvedList.includes(`${a.orderId}-${a.itemId}`));
+
+        if (activeAlerts.length > 0 && activeAlerts.length > prevFraudCountRef.current) {
+          if (onFraudDetected) onFraudDetected(activeAlerts);
+          if (fraudSoundEnabledRef.current && fraudAudioRef.current) {
             fraudAudioRef.current.currentTime = 0;
             fraudAudioRef.current.play().catch(() => {});
           }
           setShowFraudPanel(true);
         }
-        prevFraudCountRef.current = alerts.length;
+        prevFraudCountRef.current = activeAlerts.length;
       }
     } catch (error) {
       Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to fetch order tracker data', background: '#1e293b', color: '#f1f5f9' });
     } finally {
       setLoading(false);
     }
-  }, [selectedAgent, selectedProduct, selectedDate, startTime, endTime, fraudSoundEnabled, onFraudDetected]);
+  }, [selectedAgent, selectedProduct, selectedDate, startTime, endTime, onFraudDetected]);
 
+  // Load data on open + when filters change
   useEffect(() => {
     if (isOpen) {
       fetchFilters();
       fetchData();
     }
   }, [isOpen, fetchFilters, fetchData]);
+
+  // Listen for new orders via socket and auto-reload
+  useEffect(() => {
+    if (!isOpen) return;
+    const socket = socketIO(BASE_URL, { transports: ['websocket', 'polling'] });
+    socket.on('new-order', () => {
+      fetchData();
+    });
+    return () => socket.disconnect();
+  }, [isOpen, fetchData]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -184,16 +210,13 @@ const OrderTracker = ({ isOpen, onClose, onFraudDetected }) => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {fraudAlerts.length > 0 && (
+          {fraudAlerts.filter(a => !resolvedIds.includes(`${a.orderId}-${a.itemId}`)).length > 0 && (
             <button
               onClick={() => setShowFraudPanel(!showFraudPanel)}
               className="relative flex items-center gap-2 px-3 py-2 bg-red-500/20 border border-red-500/50 rounded-xl text-red-400 font-bold text-sm animate-pulse hover:bg-red-500/30"
             >
               <AlertTriangle className="w-4 h-4 animate-bounce" />
-              <span className="hidden sm:inline">FRAUD ALERT</span>
-              <span className="bg-red-500 text-white text-xs font-bold rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center">
-                {fraudAlerts.length}
-              </span>
+              <span>Fraud Alert ({fraudAlerts.filter(a => !resolvedIds.includes(`${a.orderId}-${a.itemId}`)).length})</span>
             </button>
           )}
           <button onClick={handleToggleFraudSound} className="p-2 bg-dark-800 rounded-xl hover:bg-dark-700" title={fraudSoundEnabled ? 'Mute alerts' : 'Unmute alerts'}>
@@ -210,7 +233,7 @@ const OrderTracker = ({ isOpen, onClose, onFraudDetected }) => {
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
         {/* Fraud Alert Panel */}
-        {showFraudPanel && fraudAlerts.length > 0 && (
+        {showFraudPanel && fraudAlerts.filter(a => !resolvedIds.includes(`${a.orderId}-${a.itemId}`)).length > 0 && (
           <div className="bg-red-900/30 border-2 border-red-500 rounded-2xl p-4 animate-pulse">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -223,7 +246,7 @@ const OrderTracker = ({ isOpen, onClose, onFraudDetected }) => {
               </button>
             </div>
             <div className="space-y-2 max-h-48 overflow-y-auto">
-              {fraudAlerts.map((alert, i) => (
+              {fraudAlerts.filter(a => !resolvedIds.includes(`${a.orderId}-${a.itemId}`)).map((alert, i) => (
                 <div key={i} className="flex items-center justify-between bg-red-950/50 rounded-lg px-3 py-2 text-sm">
                   <div className="flex items-center gap-3">
                     <span className="text-red-400 font-bold">#{alert.orderId}</span>

@@ -28,6 +28,9 @@ const PublicStorefront = () => {
   const [trackingNumber, setTrackingNumber] = useState('');
   const [trackedOrders, setTrackedOrders] = useState([]);
   const [isTracking, setIsTracking] = useState(false);
+  
+  // Prevent duplicate payment verification
+  const verifiedRefsRef = React.useRef(new Set());
 
   const fetchStorefront = useCallback(async () => {
     setLoading(true);
@@ -96,7 +99,11 @@ const PublicStorefront = () => {
     const payment = searchParams.get('payment');
     const reference = searchParams.get('reference');
     if (payment === 'callback' && reference) {
-      verifyPayment(reference);
+      // Prevent duplicate verification of the same reference
+      if (!verifiedRefsRef.current.has(reference)) {
+        verifiedRefsRef.current.add(reference);
+        verifyPayment(reference);
+      }
       window.history.replaceState({}, '', `/store/${slug}`);
     }
   }, [searchParams, slug, verifyPayment]);

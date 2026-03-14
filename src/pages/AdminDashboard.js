@@ -17,6 +17,7 @@ import BeneficiaryTableModal from '../components/BeneficiaryTableModal';
 import FloatingChatButton from '../components/FloatingChatButton';
 import ExternalApiKeys from '../components/ExternalApiKeys';
 import OrderTracker from '../components/OrderTracker';
+import SuspiciousActivity from '../components/SuspiciousActivity';
 
 // Notification sound
 const notificationSound = new Audio('/notification-sound.mp3');
@@ -87,6 +88,7 @@ const AdminDashboard = () => {
   const [showBeneficiaryModal, setShowBeneficiaryModal] = useState(false);
   const [showExternalApiModal, setShowExternalApiModal] = useState(false);
   const [showOrderTracker, setShowOrderTracker] = useState(false);
+  const [showSuspiciousActivity, setShowSuspiciousActivity] = useState(false);
   const [fraudAlerts, setFraudAlerts] = useState([]);
   const [fraudBlinking, setFraudBlinking] = useState(false);
   
@@ -208,12 +210,33 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchFraudAlerts = useCallback(async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/order/admin/order-tracker`, { headers: getAuthHeaders() });
+      if (res.data.success) {
+        const allAlerts = res.data.fraudAlerts || [];
+        const resolvedList = JSON.parse(localStorage.getItem('resolvedFraudAlerts') || '[]');
+        const activeAlerts = allAlerts.filter(a => !resolvedList.includes(`${a.orderId}-${a.itemId}`));
+        setFraudAlerts(activeAlerts);
+        if (activeAlerts.length > 0) {
+          setFraudBlinking(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching fraud alerts:', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchData(true); // Initial load with loading indicator
-    // Background refresh without visible loading - every 10 seconds
-    const interval = setInterval(() => fetchData(false), 30000);
+    fetchFraudAlerts(); // Fetch fraud alerts immediately on mount
+    // Background refresh without visible loading - every 30 seconds
+    const interval = setInterval(() => {
+      fetchData(false);
+      fetchFraudAlerts();
+    }, 30000);
     return () => clearInterval(interval);
-  }, [fetchData]);
+  }, [fetchData, fetchFraudAlerts]);
 
   // Real-time order notifications via socket
   useEffect(() => {
@@ -221,9 +244,10 @@ const AdminDashboard = () => {
     socket.on('new-order', () => {
       // Immediately refresh data when a new order is placed
       fetchData(false);
+      fetchFraudAlerts();
     });
     return () => socket.disconnect();
-  }, [fetchData]);
+  }, [fetchData, fetchFraudAlerts]);
 
   useEffect(() => {
     const role = localStorage.getItem('role');
@@ -571,7 +595,7 @@ const AdminDashboard = () => {
               <div className="flex items-center gap-2 sm:gap-3">
                 {fraudAlerts.length > 0 && (
                   <button
-                    onClick={() => { setShowOrderTracker(true); setFraudBlinking(false); }}
+                    onClick={() => { setShowSuspiciousActivity(true); setFraudBlinking(false); }}
                     className={`relative flex items-center gap-1.5 px-3 py-2 bg-red-500/20 border-2 border-red-500 rounded-xl text-red-400 font-bold text-xs sm:text-sm ${fraudBlinking ? 'animate-pulse' : ''}`}
                     style={fraudBlinking ? { animation: 'pulse 0.5s ease-in-out infinite, borderBlink 0.3s ease-in-out infinite alternate' } : {}}
                     title="Suspicious activity detected!"
@@ -1140,6 +1164,9 @@ const AdminDashboard = () => {
 
       {/* Order Tracker Modal */}
       <OrderTracker isOpen={showOrderTracker} onClose={() => setShowOrderTracker(false)} onFraudDetected={(alerts) => { setFraudAlerts(alerts); setFraudBlinking(true); }} />
+
+      {/* Suspicious Activity Modal */}
+      <SuspiciousActivity isOpen={showSuspiciousActivity} onClose={() => setShowSuspiciousActivity(false)} onAlertsUpdate={(activeAlerts) => { setFraudAlerts(activeAlerts); if (activeAlerts.length > 0) setFraudBlinking(true); }} />
 
       {/* Floating Chat */}
       <FloatingChatButton currentUser={{ id: parseInt(localStorage.getItem('userId')), name: localStorage.getItem('name'), role: 'admin' }} />
