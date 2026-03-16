@@ -218,7 +218,7 @@ const OtherDashboard = () => {
       fetchCart();
       setMobileNumbers(prev => ({ ...prev, [productId]: '' }));
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Error', background: '#1e293b', color: '#f1f5f9' });
+      Swal.fire({ icon: 'error', title: 'Error', text: error.response?.data?.error || 'Failed to add to cart', background: '#1e293b', color: '#f1f5f9' });
     } finally {
       addingToCartRef.current = false;
     }
@@ -420,7 +420,7 @@ const OtherDashboard = () => {
       </div>
 
       <TopUp isOpen={showTopUp} onClose={() => { setShowTopUp(false); fetchLoanBalance(); }} />
-      <OrderHistory isOpen={showHistory} onClose={() => setShowHistory(false)} orderHistory={orderHistory} />
+      <OrderHistory isOpen={showHistory} onClose={() => setShowHistory(false)} orderHistory={orderHistory} onOrderCancelled={() => { fetchOrderHistory(); fetchLoanBalance(); }} />
       <TransactionsModal isOpen={showTransactions} onClose={() => setShowTransactions(false)} />
       <UploadExcel isOpen={showUploadExcel} onClose={() => setShowUploadExcel(false)} onUploadSuccess={fetchData} />
       <PasteOrders isOpen={showPasteOrders} onClose={() => setShowPasteOrders(false)} onUploadSuccess={fetchData} />

@@ -246,7 +246,7 @@ const UserDashboard = () => {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'Failed to add to cart',
+        text: error.response?.data?.error || 'Failed to add to cart',
         background: '#1e293b',
         color: '#f1f5f9'
       });
@@ -614,7 +614,7 @@ const UserDashboard = () => {
       <TopUp isOpen={showTopUp} onClose={() => { setShowTopUp(false); fetchLoanBalance(); }} />
 
       {/* Order History Modal */}
-      <OrderHistory isOpen={showHistory} onClose={() => setShowHistory(false)} orderHistory={orderHistory} />
+      <OrderHistory isOpen={showHistory} onClose={() => setShowHistory(false)} orderHistory={orderHistory} onOrderCancelled={() => { fetchOrderHistory(); fetchLoanBalance(); }} />
       
       {/* Tool Modals */}
       <TransactionsModal isOpen={showTransactions} onClose={() => setShowTransactions(false)} />

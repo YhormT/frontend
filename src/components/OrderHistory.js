@@ -1,5 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { X, Search, Phone, Clock, Package, CreditCard, MessageCircle, Filter, ChevronRight, Calendar, User, DollarSign } from 'lucide-react';
+import { X, Search, Phone, Clock, Package, CreditCard, MessageCircle, Filter, ChevronRight, Calendar, User, DollarSign, XCircle } from 'lucide-react';
+import axios from 'axios';
+import Swal from 'sweetalert2';
+import BASE_URL from '../endpoints/endpoints';
 
 const StatusBadge = ({ status }) => {
   const config = {
@@ -18,7 +21,7 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-const OrderHistory = ({ isOpen, onClose, orderHistory = [] }) => {
+const OrderHistory = ({ isOpen, onClose, orderHistory = [], onOrderCancelled }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -86,6 +89,31 @@ const OrderHistory = ({ isOpen, onClose, orderHistory = [] }) => {
 
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
   const paginatedItems = filteredItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const handleCancelOrder = async (item, order) => {
+    const result = await Swal.fire({
+      title: 'Cancel Order?',
+      text: `Cancel item #${item.id} (${item.product?.name || 'Unknown'})? Your wallet will be refunded.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#374151',
+      confirmButtonText: 'Yes, Cancel',
+      background: '#1e293b',
+      color: '#f1f5f9'
+    });
+    if (!result.isConfirmed) return;
+    try {
+      const userId = localStorage.getItem('userId');
+      const res = await axios.post(`${BASE_URL}/order/cancel/${userId}/${item.id}`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      Swal.fire({ icon: 'success', title: 'Order Cancelled', text: `Refund of GHS ${res.data.refundAmount?.toFixed(2) || '0.00'} processed.`, timer: 2500, showConfirmButton: false, background: '#1e293b', color: '#f1f5f9' });
+      if (onOrderCancelled) onOrderCancelled();
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'Cancel Failed', text: error.response?.data?.error || 'Failed to cancel order', background: '#1e293b', color: '#f1f5f9' });
+    }
+  };
 
   const openWhatsApp = (item, order) => {
     const url = `https://wa.me/233540277583?text=${encodeURIComponent(
@@ -216,7 +244,19 @@ const OrderHistory = ({ isOpen, onClose, orderHistory = [] }) => {
               </div>
             </div>
 
-            {/* Action Button */}
+            {/* Action Buttons */}
+            {item.status === 'Pending' && (
+              <button
+                onClick={() => {
+                  handleCancelOrder(item, order);
+                  onClose();
+                }}
+                className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                <XCircle className="w-5 h-5" />
+                Cancel Order
+              </button>
+            )}
             {item.status === 'Completed' && (
               <button
                 onClick={() => {
@@ -361,7 +401,18 @@ const OrderHistory = ({ isOpen, onClose, orderHistory = [] }) => {
                       </div>
                       <StatusBadge status={item.status} />
                     </div>
-                    <ChevronRight className="w-5 h-5 text-dark-600 group-hover:text-cyan-400 transition-colors" />
+                    <div className="flex items-center gap-2">
+                      {item.status === 'Pending' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleCancelOrder(item, item.order); }}
+                          className="p-1.5 bg-red-500/20 hover:bg-red-500/40 rounded-lg transition-colors"
+                          title="Cancel Order"
+                        >
+                          <XCircle className="w-4 h-4 text-red-400" />
+                        </button>
+                      )}
+                      <ChevronRight className="w-5 h-5 text-dark-600 group-hover:text-cyan-400 transition-colors" />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-sm">

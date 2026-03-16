@@ -428,12 +428,13 @@ const OrderTable = ({ isOpen, onClose }) => {
         </div>
 
         {/* Table/Cards */}
-        <div className="flex-1 overflow-auto p-2 sm:p-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
+        <div className="flex-1 overflow-auto p-2 sm:p-4 relative min-h-[50vh]">
+          {loading && (
+            <div className="absolute inset-0 bg-dark-800/60 backdrop-blur-[1px] z-10 flex items-center justify-center">
               <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
             </div>
-          ) : filteredItems.length === 0 ? (
+          )}
+          {filteredItems.length === 0 && !loading ? (
             <div className="text-center py-12">
               <Package className="w-12 h-12 text-dark-600 mx-auto mb-4" />
               <p className="text-dark-400">No orders found</p>
