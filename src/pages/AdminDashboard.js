@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Swal from 'sweetalert2';
-import { Menu, X, Users, Package, ShoppingCart, Bell, RefreshCw, Loader2, Search, Plus, Edit, Trash2, CheckCircle, XCircle, BarChart3, Wallet, User, LogOut, RotateCcw, Eye, EyeOff, Save, Banknote, DollarSign, Table2, Key, AlertTriangle, Wifi } from 'lucide-react';
+import { Menu, X, Users, Package, ShoppingCart, Bell, RefreshCw, Loader2, Search, Plus, Edit, Trash2, CheckCircle, XCircle, BarChart3, Wallet, User, LogOut, RotateCcw, Eye, EyeOff, Save, Banknote, DollarSign, Table2, Key, AlertTriangle, Wifi, FileText } from 'lucide-react';
 import BASE_URL from '../endpoints/endpoints';
 import { io as socketIO } from 'socket.io-client';
 import ProductDialog from '../components/ProductDialog';
@@ -17,6 +17,7 @@ import BeneficiaryTableModal from '../components/BeneficiaryTableModal';
 import FloatingChatButton from '../components/FloatingChatButton';
 import ExternalApiKeys from '../components/ExternalApiKeys';
 import OrderTracker from '../components/OrderTracker';
+import OrderFiles from '../components/OrderFiles';
 import SuspiciousActivity from '../components/SuspiciousActivity';
 
 // Notification sound
@@ -500,7 +501,8 @@ const AdminDashboard = () => {
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'orders', label: 'Orders', icon: ShoppingCart },
     { id: 'users', label: 'Users', icon: Users },
-    { id: 'products', label: 'Products', icon: Package }
+    { id: 'products', label: 'Products', icon: Package },
+    { id: 'orderFiles', label: 'Order Files', icon: FileText }
   ];
 
   return (
@@ -560,6 +562,10 @@ const AdminDashboard = () => {
           <button onClick={() => { setShowOrderTracker(true); setIsSidebarOpen(false); }}
             className="w-full flex items-center gap-3 px-4 py-3 text-dark-300 hover:text-white hover:bg-dark-700/50 rounded-xl transition-all">
             <Wifi className="w-5 h-5" /><span>Order Tracker</span>
+          </button>
+          <button onClick={() => { setActiveTab('orderFiles'); setIsSidebarOpen(false); }}
+            className="w-full flex items-center gap-3 px-4 py-3 text-dark-300 hover:text-white hover:bg-dark-700/50 rounded-xl transition-all">
+            <FileText className="w-5 h-5" /><span>Order Files</span>
           </button>
           <hr className="border-dark-700 my-2" />
           <button onClick={() => navigate('/profile')}
@@ -1025,6 +1031,10 @@ const AdminDashboard = () => {
                     </div>
                   )}
                 </div>
+              )}
+
+              {activeTab === 'orderFiles' && (
+                <OrderFiles />
               )}
 
               {activeTab === 'products' && (
