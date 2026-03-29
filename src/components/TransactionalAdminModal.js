@@ -32,6 +32,7 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
   const [shopLoading, setShopLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('transactions');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [networkFilter, setNetworkFilter] = useState('');
   const [amountFilter, setAmountFilter] = useState('');
@@ -39,6 +40,8 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
   const [endDate, setEndDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [shopPage, setShopPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
+  const [serverStats, setServerStats] = useState({ totalTransactions: 0, totalCredits: 0, totalDebits: 0, netBalance: 0 });
   // Separate filters for shop orders
   const [shopFilters, setShopFilters] = useState({ name: '', phone: '', product: '', status: '', startDate: '', endDate: '' });
   // Referrals state
@@ -48,26 +51,51 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
   const [referralFilters, setReferralFilters] = useState({ agent: '', status: '', startDate: '', endDate: '' });
   const itemsPerPage = 50;
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Reset page when filters change
+  useEffect(() => { setCurrentPage(1); }, [typeFilter, networkFilter, amountFilter, startDate, endDate]);
+
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
     try {
+      const params = new URLSearchParams();
+      params.append('page', currentPage);
+      params.append('limit', itemsPerPage);
+      if (debouncedSearch) params.append('search', debouncedSearch);
+      if (typeFilter) params.append('type', typeFilter);
+      if (amountFilter === 'credits') params.append('amountFilter', 'positive');
+      else if (amountFilter === 'debits') params.append('amountFilter', 'negative');
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const queryStr = params.toString();
       const headers = getAuthHeaders();
-      const [txRes, ordersRes] = await Promise.all([
-        axios.get(`${BASE_URL}/api/transactions?limit=999999`, { headers }),
-        axios.get(`${BASE_URL}/order/admin/allorder?limit=999999`, { headers })
+
+      const [txRes, statsRes] = await Promise.all([
+        axios.get(`${BASE_URL}/api/transactions?${queryStr}`, { headers }),
+        axios.get(`${BASE_URL}/api/transactions/stats?${queryStr}`, { headers })
       ]);
       if (txRes.data.success) {
         setTransactions(txRes.data.data || []);
+        setPagination(txRes.data.pagination || { total: 0, totalPages: 1 });
       }
-      // Extract orders data
-      const ordersData = ordersRes.data?.data || ordersRes.data?.orders || [];
-      setAllOrders(ordersData);
+      if (statsRes.data.success) {
+        setServerStats(statsRes.data.data || {});
+      }
     } catch (error) {
       console.error('Error fetching transactions:', error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, debouncedSearch, typeFilter, amountFilter, startDate, endDate]);
 
   const fetchShopOrders = useCallback(async () => {
     setShopLoading(true);
@@ -108,11 +136,23 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
     }
   }, [referralFilters]);
 
+  // Fetch orders only once when modal opens (lightweight - no limit=999999)
+  const fetchOrders = useCallback(async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/order/admin/allorder?limit=200`, { headers: getAuthHeaders() });
+      const ordersData = res.data?.data || res.data?.orders || [];
+      setAllOrders(ordersData);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
       fetchTransactions();
+      fetchOrders();
     }
-  }, [isOpen, fetchTransactions]);
+  }, [isOpen, fetchTransactions, fetchOrders]);
 
   useEffect(() => {
     if (isOpen && activeTab === 'shop') fetchShopOrders();
@@ -122,42 +162,17 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
     if (isOpen && activeTab === 'referrals') fetchReferralOrders();
   }, [isOpen, activeTab, fetchReferralOrders]);
 
+  // Server handles filtering now - only apply network filter client-side (not supported server-side)
   const filteredTransactions = useMemo(() => {
-    let filtered = transactions;
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(tx => tx.user?.name?.toLowerCase().includes(searchLower) || tx.description?.toLowerCase().includes(searchLower));
-    }
-    if (typeFilter) filtered = filtered.filter(tx => tx.type === typeFilter);
-    
-    // Network filter - check description for network names
-    if (networkFilter) {
-      filtered = filtered.filter(tx => {
-        const desc = (tx.description || '').toUpperCase();
-        if (networkFilter === 'MTN') return desc.includes('MTN');
-        if (networkFilter === 'AIRTELTIGO') return desc.includes('AIRTEL') || desc.includes('TIGO');
-        if (networkFilter === 'TELECEL') return desc.includes('TELECEL') || desc.includes('VODAFONE');
-        return true;
-      });
-    }
-    
-    // Amount filter - debits or credits only
-    if (amountFilter === 'debits') {
-      filtered = filtered.filter(tx => tx.amount < 0);
-    } else if (amountFilter === 'credits') {
-      filtered = filtered.filter(tx => tx.amount > 0);
-    }
-    
-    if (startDate) {
-      const start = new Date(startDate + 'T00:00:00');
-      filtered = filtered.filter(tx => new Date(tx.createdAt) >= start);
-    }
-    if (endDate) {
-      const end = new Date(endDate + 'T23:59:59.999');
-      filtered = filtered.filter(tx => new Date(tx.createdAt) <= end);
-    }
-    return filtered;
-  }, [transactions, search, typeFilter, networkFilter, amountFilter, startDate, endDate]);
+    if (!networkFilter) return transactions;
+    return transactions.filter(tx => {
+      const desc = (tx.description || '').toUpperCase();
+      if (networkFilter === 'MTN') return desc.includes('MTN');
+      if (networkFilter === 'AIRTELTIGO') return desc.includes('AIRTEL') || desc.includes('TIGO');
+      if (networkFilter === 'TELECEL') return desc.includes('TELECEL') || desc.includes('VODAFONE');
+      return true;
+    });
+  }, [transactions, networkFilter]);
 
   // Filter orders with same filters as transactions (search, network, date)
   const filteredOrders = useMemo(() => {
@@ -202,34 +217,23 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
     return filtered;
   }, [allOrders, search, networkFilter, startDate, endDate]);
 
+  // Stats now come from the server-side stats endpoint (fast DB aggregation)
   const stats = useMemo(() => {
-    // Transaction-level stats (for transactions tab)
-    let txCredits = 0, txDebits = 0;
-    filteredTransactions.forEach(tx => {
-      if (tx.type === 'CANCELLED' || tx.description?.toLowerCase().includes('cancelled') || tx.description?.toLowerCase().includes('refund')) {
-        return;
-      }
-      if (tx.amount > 0) txCredits += tx.amount;
-      else txDebits += tx.amount;
-    });
-    
-    // Revenue = quantity × price for all non-cancelled orders
-    let revenue = 0;
-    let revenueOrderCount = 0;
-    let totalGB = 0;
-    
+    const total = serverStats.totalTransactions || pagination.total || 0;
+    const credits = serverStats.totalCredits || 0;
+    const debits = serverStats.totalDebits || 0;
+    const txNet = credits + debits;
+
+    // Revenue/expenses/GB still computed from the limited orders set
+    let revenue = 0, revenueOrderCount = 0, totalGB = 0, expenses = 0, expenseCount = 0;
     filteredOrders.forEach(order => {
       const status = (order.order?.items?.[0]?.status || order.status || '').toLowerCase();
       const price = order.product?.price || 0;
       const quantity = order.quantity || order.order?.items?.[0]?.quantity || 1;
-      
-      // Revenue: count all orders except cancelled
       if (status !== 'cancelled' && status !== 'canceled') {
         revenue += quantity * price;
         revenueOrderCount++;
       }
-      
-      // Total GB from completed agent orders only (exclude shop/storefront orders)
       if (status === 'completed') {
         const userEmail = (order.user?.email || '').toLowerCase();
         const userName = (order.user?.name || '').toLowerCase();
@@ -240,25 +244,14 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
           if (match) totalGB += parseFloat(match[1]);
         }
       }
-    });
-    
-    // Expenses = only refunds and cancelled orders (quantity × price)
-    let expenses = 0;
-    let expenseCount = 0;
-    filteredOrders.forEach(order => {
-      const status = (order.order?.items?.[0]?.status || order.status || '').toLowerCase();
       if (status === 'cancelled' || status === 'canceled') {
-        const price = order.product?.price || 0;
-        const quantity = order.quantity || order.order?.items?.[0]?.quantity || 1;
         expenses += quantity * price;
         expenseCount++;
       }
     });
-    
     const net = revenue - expenses;
-    
-    return { total: filteredTransactions.length, credits: txCredits, debits: txDebits, txNet: txCredits + txDebits, revenue, revenueOrderCount, expenses, expenseCount, net, totalGB };
-  }, [filteredTransactions, filteredOrders]);
+    return { total, credits, debits, txNet, revenue, revenueOrderCount, expenses, expenseCount, net, totalGB };
+  }, [serverStats, pagination, filteredOrders]);
 
   const userSales = useMemo(() => {
     const salesMap = new Map();
@@ -487,7 +480,7 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredTransactions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((tx, i) => (
+                      {filteredTransactions.map((tx, i) => (
                         <tr key={tx.id || i} className="border-t border-dark-700 hover:bg-dark-800/50">
                           <td className="px-4 py-3"><span className={`px-2 py-1 rounded text-xs font-medium ${getTypeColor(tx.type)}`}>{tx.type}</span></td>
                           <td className="px-4 py-3 text-white">{tx.user?.name || 'Unknown'}</td>
@@ -499,16 +492,16 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
                       ))}
                     </tbody>
                   </table>
-                  {/* Pagination */}
-                  {filteredTransactions.length > itemsPerPage && (
+                  {/* Pagination - Server-side */}
+                  {(pagination.totalPages || 1) > 1 && (
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-4 border-t border-dark-700">
-                      <p className="text-dark-400 text-sm">Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredTransactions.length)} of {filteredTransactions.length}</p>
+                      <p className="text-dark-400 text-sm">Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, pagination.total)} of {pagination.total}</p>
                       <div className="flex items-center gap-2">
                         <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="px-3 py-1.5 bg-dark-700 hover:bg-dark-600 text-dark-300 rounded-lg text-sm disabled:opacity-50">First</button>
                         <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1.5 bg-dark-700 hover:bg-dark-600 text-dark-300 rounded-lg text-sm disabled:opacity-50">Prev</button>
-                        <span className="px-4 py-1.5 bg-indigo-500 text-white rounded-lg text-sm font-medium">Page {currentPage} of {Math.ceil(filteredTransactions.length / itemsPerPage)}</span>
-                        <button onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredTransactions.length / itemsPerPage), p + 1))} disabled={currentPage >= Math.ceil(filteredTransactions.length / itemsPerPage)} className="px-3 py-1.5 bg-dark-700 hover:bg-dark-600 text-dark-300 rounded-lg text-sm disabled:opacity-50">Next</button>
-                        <button onClick={() => setCurrentPage(Math.ceil(filteredTransactions.length / itemsPerPage))} disabled={currentPage >= Math.ceil(filteredTransactions.length / itemsPerPage)} className="px-3 py-1.5 bg-dark-700 hover:bg-dark-600 text-dark-300 rounded-lg text-sm disabled:opacity-50">Last</button>
+                        <span className="px-4 py-1.5 bg-indigo-500 text-white rounded-lg text-sm font-medium">Page {currentPage} of {pagination.totalPages}</span>
+                        <button onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))} disabled={currentPage >= pagination.totalPages} className="px-3 py-1.5 bg-dark-700 hover:bg-dark-600 text-dark-300 rounded-lg text-sm disabled:opacity-50">Next</button>
+                        <button onClick={() => setCurrentPage(pagination.totalPages)} disabled={currentPage >= pagination.totalPages} className="px-3 py-1.5 bg-dark-700 hover:bg-dark-600 text-dark-300 rounded-lg text-sm disabled:opacity-50">Last</button>
                       </div>
                     </div>
                   )}
