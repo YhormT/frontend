@@ -100,7 +100,7 @@ const SuperAgent = () => {
         const suspended = res.data?.isSuspended === true;
         setIsSuspended(suspended);
         localStorage.setItem('isSuspended', suspended ? 'true' : 'false');
-      }).catch(() => {});
+      }).catch(() => { });
     }
     const interval = setInterval(fetchLoanBalance, 60000);
     return () => clearInterval(interval);
@@ -129,10 +129,10 @@ const SuperAgent = () => {
     let filtered = (Array.isArray(products) ? products : []).filter(p => allowedNames.includes(p.name));
     if (selectedCategory) {
       // Map category selection to SUPER tagged version
-      const superCategory = selectedCategory === 'MTN' ? 'MTN - SUPER' 
-        : selectedCategory === 'TELECEL' ? 'TELECEL - SUPER' 
-        : selectedCategory === 'AIRTEL TIGO' ? 'AIRTEL TIGO - SUPER' 
-        : selectedCategory;
+      const superCategory = selectedCategory === 'MTN' ? 'MTN - SUPER'
+        : selectedCategory === 'TELECEL' ? 'TELECEL - SUPER'
+          : selectedCategory === 'AIRTEL TIGO' ? 'AIRTEL TIGO - SUPER'
+            : selectedCategory;
       filtered = filtered.filter(p => p.name === superCategory);
     }
     // Sort: in-stock first, then by name (MTN first) and description
@@ -144,7 +144,7 @@ const SuperAgent = () => {
   }, [products, selectedCategory]);
 
   const validPrefixes = ['024', '025', '053', '054', '055', '059', '020', '050', '027', '057', '026', '056', '028'];
-  
+
   const validatePhoneNumber = (phone) => {
     if (!phone || phone.length !== 10) return false;
     const prefix = phone.substring(0, 3);
@@ -171,7 +171,7 @@ const SuperAgent = () => {
       addingToCartRef.current = false;
       return;
     }
-    
+
     if (!validatePhoneNumber(mobileNumber)) {
       setErrors(prev => ({ ...prev, [productId]: 'Invalid prefix. Use 024, 054, 055, 059, 020, 050, 027, 057, 026, 056, 028' }));
       addingToCartRef.current = false;
@@ -224,7 +224,7 @@ const SuperAgent = () => {
       try {
         await axios.delete(`${BASE_URL}/api/cart/remove/${cartItemId}`, { headers: getAuthHeaders() });
         setCart(prev => prev.filter(item => item.id !== cartItemId));
-      } catch (error) {}
+      } catch (error) { }
     }
   };
 
@@ -235,7 +235,7 @@ const SuperAgent = () => {
       try {
         await axios.delete(`${BASE_URL}/api/cart/${userId}/clear`, { headers: getAuthHeaders() });
         setCart([]);
-      } catch (error) {}
+      } catch (error) { }
     }
   };
 
@@ -273,7 +273,7 @@ const SuperAgent = () => {
   };
 
   const logoutUser = async () => {
-    try { await axios.post(`${BASE_URL}/api/auth/logout`, { userId: localStorage.getItem('userId') }); } catch (e) {}
+    try { await axios.post(`${BASE_URL}/api/auth/logout`, { userId: localStorage.getItem('userId') }); } catch (e) { }
     localStorage.clear(); navigate('/login');
   };
 
@@ -281,11 +281,11 @@ const SuperAgent = () => {
 
   return (
     <div className="min-h-screen bg-dark-950">
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        setIsOpen={setIsSidebarOpen} 
-        selectedCategory={selectedCategory} 
-        handleCategorySelect={handleCategorySelect} 
+      <Sidebar
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
+        selectedCategory={selectedCategory}
+        handleCategorySelect={handleCategorySelect}
         logoutUser={logoutUser}
         onOpenTransactions={() => setShowTransactions(true)}
         onOpenUploadExcel={() => setShowUploadExcel(true)}
@@ -343,72 +343,72 @@ const SuperAgent = () => {
             </div>
           )}
           {!isSuspended && <>
-          <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-            <div className="bg-emerald-500/10 backdrop-blur rounded-xl sm:rounded-2xl border border-emerald-500/20 p-3 sm:p-4">
-              <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500 mb-1 sm:mb-2" />
-              <p className="text-lg sm:text-2xl font-bold text-white">GHS {balance.toFixed(2)}</p>
-              <p className="text-dark-400 text-xs sm:text-sm">Balance</p>
-              {loanBalance?.hasLoan && <p className="text-red-400 text-xs mt-1 animate-pulse flex items-center gap-1"><Banknote className="w-3 h-3" /> Loan: GHS {parseFloat(loanBalance?.adminLoanBalance || 0).toFixed(2)}</p>}
+            <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+              <div className="bg-emerald-500/10 backdrop-blur rounded-xl sm:rounded-2xl border border-emerald-500/20 p-3 sm:p-4">
+                <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500 mb-1 sm:mb-2" />
+                <p className="text-lg sm:text-2xl font-bold text-white">GHS {balance.toFixed(2)}</p>
+                <p className="text-dark-400 text-xs sm:text-sm">Balance</p>
+                {loanBalance?.hasLoan && <p className="text-red-400 text-xs mt-1 animate-pulse flex items-center gap-1"><Banknote className="w-3 h-3" /> Loan: GHS {parseFloat(loanBalance?.adminLoanBalance || 0).toFixed(2)}</p>}
+              </div>
+              <div className="bg-dark-800/50 backdrop-blur rounded-xl sm:rounded-2xl border border-dark-700 p-3 sm:p-4"><Package className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500 mb-1 sm:mb-2" /><p className="text-lg sm:text-2xl font-bold text-white">{filteredProducts.length}</p><p className="text-dark-400 text-xs sm:text-sm">Products</p></div>
+              <div className="bg-dark-800/50 backdrop-blur rounded-xl sm:rounded-2xl border border-dark-700 p-3 sm:p-4 cursor-pointer active:scale-95 hover:border-amber-500/30 transition-transform" onClick={() => setShowHistory(true)}><Clock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 mb-1 sm:mb-2" /><p className="text-lg sm:text-2xl font-bold text-white">{orderHistory.flatMap(o => o.items || []).filter(i => i.status === 'Pending').length}</p><p className="text-dark-400 text-xs sm:text-sm">Pending</p></div>
+              <div className="bg-dark-800/50 backdrop-blur rounded-xl sm:rounded-2xl border border-dark-700 p-3 sm:p-4 cursor-pointer active:scale-95 hover:border-emerald-500/30 transition-transform" onClick={() => setShowHistory(true)}><CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500 mb-1 sm:mb-2" /><p className="text-lg sm:text-2xl font-bold text-white">{orderHistory.flatMap(o => o.items || []).filter(i => i.status === 'Completed').length}</p><p className="text-dark-400 text-xs sm:text-sm">Completed</p></div>
             </div>
-            <div className="bg-dark-800/50 backdrop-blur rounded-xl sm:rounded-2xl border border-dark-700 p-3 sm:p-4"><Package className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500 mb-1 sm:mb-2" /><p className="text-lg sm:text-2xl font-bold text-white">{filteredProducts.length}</p><p className="text-dark-400 text-xs sm:text-sm">Products</p></div>
-            <div className="bg-dark-800/50 backdrop-blur rounded-xl sm:rounded-2xl border border-dark-700 p-3 sm:p-4 cursor-pointer active:scale-95 hover:border-amber-500/30 transition-transform" onClick={() => setShowHistory(true)}><Clock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 mb-1 sm:mb-2" /><p className="text-lg sm:text-2xl font-bold text-white">{orderHistory.flatMap(o => o.items || []).filter(i => i.status === 'Pending').length}</p><p className="text-dark-400 text-xs sm:text-sm">Pending</p></div>
-            <div className="bg-dark-800/50 backdrop-blur rounded-xl sm:rounded-2xl border border-dark-700 p-3 sm:p-4 cursor-pointer active:scale-95 hover:border-emerald-500/30 transition-transform" onClick={() => setShowHistory(true)}><CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500 mb-1 sm:mb-2" /><p className="text-lg sm:text-2xl font-bold text-white">{orderHistory.flatMap(o => o.items || []).filter(i => i.status === 'Completed').length}</p><p className="text-dark-400 text-xs sm:text-sm">Completed</p></div>
-          </div>
 
-          <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
-            {['All', 'MTN', 'TELECEL', 'AIRTEL TIGO'].map((cat) => (
-              <button key={cat} onClick={() => handleCategorySelect(cat === 'All' ? null : cat)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${(cat === 'All' && !selectedCategory) || selectedCategory === cat ? cat === 'MTN' ? 'bg-yellow-500 text-white' : cat === 'TELECEL' ? 'bg-red-500 text-white' : cat === 'AIRTEL TIGO' ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white' : 'bg-dark-800 text-dark-300 hover:bg-dark-700'}`}>
-                {cat === 'AIRTEL TIGO' ? 'AirtelTigo' : cat}
-              </button>
-            ))}
-          </div>
+            <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
+              {['All', 'MTN', 'TELECEL', 'AIRTEL TIGO'].map((cat) => (
+                <button key={cat} onClick={() => handleCategorySelect(cat === 'All' ? null : cat)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${(cat === 'All' && !selectedCategory) || selectedCategory === cat ? cat === 'MTN' ? 'bg-yellow-500 text-white' : cat === 'TELECEL' ? 'bg-red-500 text-white' : cat === 'AIRTEL TIGO' ? 'bg-blue-500 text-white' : 'bg-emerald-500 text-white' : 'bg-dark-800 text-dark-300 hover:bg-dark-700'}`}>
+                  {cat === 'AIRTEL TIGO' ? 'AirtelTigo' : cat}
+                </button>
+              ))}
+            </div>
 
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h2 className="text-lg sm:text-xl font-bold text-white">{selectedCategory || 'All'} Products <span className="text-dark-400 text-xs sm:text-sm font-normal">({filteredProducts.length})</span></h2>
-            <button onClick={fetchData} className="p-2 bg-dark-800 rounded-xl hover:bg-dark-700"><RefreshCw className={`w-5 h-5 text-dark-400 ${isLoading ? 'animate-spin' : ''}`} /></button>
-          </div>
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-bold text-white">{selectedCategory || 'All'} Products <span className="text-dark-400 text-xs sm:text-sm font-normal">({filteredProducts.length})</span></h2>
+              <button onClick={fetchData} className="p-2 bg-dark-800 rounded-xl hover:bg-dark-700"><RefreshCw className={`w-5 h-5 text-dark-400 ${isLoading ? 'animate-spin' : ''}`} /></button>
+            </div>
 
-          {isLoading ? <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-emerald-500" /></div> : filteredProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20"><Package className="w-16 h-16 text-dark-600 mb-4" /><h3 className="text-lg font-semibold text-dark-400">No products available</h3></div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-              {filteredProducts.map((product) => {
-                const isMTN = product.name?.includes('MTN');
-                const isTelecel = product.name?.includes('TELECEL');
-                const isAirtelTigo = product.name?.includes('AIRTEL');
-                const cardGradient = isMTN ? 'from-yellow-500 to-amber-600' : isTelecel ? 'from-red-500 to-rose-600' : isAirtelTigo ? 'from-blue-500 to-indigo-600' : 'from-emerald-500 to-green-600';
-                const buttonColor = isMTN ? 'from-yellow-600 to-yellow-700' : isTelecel ? 'from-red-600 to-red-700' : isAirtelTigo ? 'from-blue-600 to-blue-700' : 'from-emerald-600 to-emerald-700';
-                return (
-                  <div key={product.id} className={`relative overflow-hidden rounded-xl sm:rounded-2xl shadow-lg bg-gradient-to-br ${cardGradient} ${product.stock === 0 ? 'opacity-75' : ''}`}>
-                    {product.stock === 0 && (
-                      <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] z-10 flex items-center justify-center">
-                        <span className="bg-red-500 text-white px-4 py-2 rounded-xl font-bold text-sm transform -rotate-12 shadow-lg">OUT OF STOCK</span>
+            {isLoading ? <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-emerald-500" /></div> : filteredProducts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20"><Package className="w-16 h-16 text-dark-600 mb-4" /><h3 className="text-lg font-semibold text-dark-400">No products available</h3></div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                {filteredProducts.map((product) => {
+                  const isMTN = product.name?.includes('MTN');
+                  const isTelecel = product.name?.includes('TELECEL');
+                  const isAirtelTigo = product.name?.includes('AIRTEL');
+                  const cardGradient = isMTN ? 'from-yellow-500 to-amber-600' : isTelecel ? 'from-red-500 to-rose-600' : isAirtelTigo ? 'from-blue-500 to-indigo-600' : 'from-emerald-500 to-green-600';
+                  const buttonColor = isMTN ? 'from-yellow-600 to-yellow-700' : isTelecel ? 'from-red-600 to-red-700' : isAirtelTigo ? 'from-blue-600 to-blue-700' : 'from-emerald-600 to-emerald-700';
+                  return (
+                    <div key={product.id} className={`relative overflow-hidden rounded-xl sm:rounded-2xl shadow-lg bg-gradient-to-br ${cardGradient} ${product.stock === 0 ? 'opacity-75' : ''}`}>
+                      {product.stock === 0 && (
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                          <span className="bg-red-500 text-white px-4 py-2 rounded-xl font-bold text-sm transform -rotate-12 shadow-lg">OUT OF STOCK</span>
+                        </div>
+                      )}
+                      <div className="p-3 sm:p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <span className="inline-block px-2 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-xs font-medium text-white">{product.name}</span>
+                          {product.stock === 0 && <span className="text-xs text-red-300 font-semibold">Out of Stock</span>}
+                        </div>
+                        <h3 className="text-lg sm:text-xl font-bold text-white mb-2">{product.description}</h3>
+                        <div className="flex items-baseline gap-1 mb-3 sm:mb-4"><span className="text-xs sm:text-sm text-white/70">GHS</span><span className="text-xl sm:text-2xl font-bold text-white">{(product.usePromoPrice && product.promoPrice != null) ? product.promoPrice : product.price}</span></div>
+                        <div className="space-y-2">
+                          <input type="tel" inputMode="numeric" placeholder="Enter mobile number" value={mobileNumbers[product.id] || ''} onChange={(e) => handleMobileNumberChange(product.id, e.target.value)}
+                            className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white/90 backdrop-blur-sm border-2 ${errors[product.id] ? 'border-red-400' : 'border-transparent'} rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none text-base`} maxLength={10} />
+                          {errors[product.id] && <p className="text-xs text-white font-medium px-2">{errors[product.id]}</p>}
+                        </div>
+                        <button onClick={() => addToCart(product.id)} disabled={balance === 0 || product.stock === 0 || (mobileNumbers[product.id] || '').length !== 10}
+                          className={`mt-3 sm:mt-4 w-full py-2.5 sm:py-3 px-4 rounded-xl font-semibold text-white transition-all active:scale-95 ${balance === 0 || product.stock === 0 || (mobileNumbers[product.id] || '').length !== 10 ? 'bg-white/20 cursor-not-allowed' : `bg-gradient-to-r ${buttonColor} shadow-lg hover:shadow-xl`}`}>
+                          {balance === 0 ? 'Insufficient Balance' : product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                        </button>
                       </div>
-                    )}
-                    <div className="p-3 sm:p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <span className="inline-block px-2 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-xs font-medium text-white">{product.name}</span>
-                        {product.stock === 0 && <span className="text-xs text-red-300 font-semibold">Out of Stock</span>}
-                      </div>
-                      <h3 className="text-lg sm:text-xl font-bold text-white mb-2">{product.description}</h3>
-                      <div className="flex items-baseline gap-1 mb-3 sm:mb-4"><span className="text-xs sm:text-sm text-white/70">GHS</span><span className="text-xl sm:text-2xl font-bold text-white">{(product.usePromoPrice && product.promoPrice != null) ? product.promoPrice : product.price}</span></div>
-                      <div className="space-y-2">
-                        <input type="tel" inputMode="numeric" placeholder="Enter mobile number" value={mobileNumbers[product.id] || ''} onChange={(e) => handleMobileNumberChange(product.id, e.target.value)}
-                          className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white/90 backdrop-blur-sm border-2 ${errors[product.id] ? 'border-red-400' : 'border-transparent'} rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none text-base`} maxLength={10} />
-                        {errors[product.id] && <p className="text-xs text-white font-medium px-2">{errors[product.id]}</p>}
-                      </div>
-                      <button onClick={() => addToCart(product.id)} disabled={balance === 0 || product.stock === 0 || (mobileNumbers[product.id] || '').length !== 10}
-                        className={`mt-3 sm:mt-4 w-full py-2.5 sm:py-3 px-4 rounded-xl font-semibold text-white transition-all active:scale-95 ${balance === 0 || product.stock === 0 || (mobileNumbers[product.id] || '').length !== 10 ? 'bg-white/20 cursor-not-allowed' : `bg-gradient-to-r ${buttonColor} shadow-lg hover:shadow-xl`}`}>
-                        {balance === 0 ? 'Insufficient Balance' : product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
-                      </button>
+                      <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
                     </div>
-                    <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
           </>}
         </main>
       </div>

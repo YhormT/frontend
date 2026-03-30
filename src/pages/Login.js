@@ -85,7 +85,7 @@ const Login = () => {
       `}</style>
       {/* Left Side - Branding */}
       <div className="hidden lg:flex lg:w-[52%] relative overflow-hidden bg-blue-600">
-        {/* Decorative shapes */}
+        {/* Decorative shapes  */}
         <div className="absolute inset-0">
           <div className="absolute top-20 left-16 w-64 h-64 bg-blue-500/40 rounded-full blur-3xl"></div>
           <div className="absolute bottom-32 right-12 w-80 h-80 bg-yellow-400/15 rounded-full blur-3xl"></div>
@@ -112,7 +112,7 @@ const Login = () => {
             <p className="text-blue-100 text-base leading-relaxed mb-10">
               Fast, secure, and affordable connectivity solutions for everyone. Buy data for all major networks in one place.
             </p>
-            
+
             <div className="space-y-4">
               <div className="flex items-center gap-3.5">
                 <div className="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/10">
@@ -354,7 +354,7 @@ const Login = () => {
 
               <section>
                 <h3 className="font-semibold text-lg text-gray-800 mb-2">6. REFUND POLICY</h3>
-                
+
                 <div className="ml-4 space-y-3">
                   <div>
                     <h4 className="font-medium text-gray-800">6.1 Digital Products & Services</h4>
