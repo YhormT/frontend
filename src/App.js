@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
-import { io } from 'socket.io-client';
+import getSocket from './utils/socket';
 import Swal from 'sweetalert2';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -107,20 +107,11 @@ const PrivateRoute = ({ allowedRoles }) => {
 function App() {
   useEffect(() => {
     const userId = localStorage.getItem('userId');
-    if (!userId) {
-      return;
-    }
+    if (!userId) return;
 
-    const socket = io(BASE_URL, {
-      transports: ['websocket'],
-      reconnectionAttempts: 5,
-    });
+    const socket = getSocket();
 
-    socket.on('connect', () => {
-      socket.emit('register', userId);
-    });
-
-    socket.on('force-logout', (data) => {
+    const handleForceLogout = (data) => {
       Swal.fire({
         title: 'Session Terminated',
         text: data.message || 'Your session has been terminated by an administrator. Please log in again.',
@@ -133,16 +124,12 @@ function App() {
         localStorage.clear();
         window.location.href = '/login';
       });
-    });
+    };
 
-    socket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
-    });
+    socket.on('force-logout', handleForceLogout);
 
     return () => {
-      if (socket.connected) {
-        socket.disconnect();
-      }
+      socket.off('force-logout', handleForceLogout);
     };
   }, []);
 

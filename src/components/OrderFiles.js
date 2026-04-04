@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import BASE_URL from '../endpoints/endpoints';
+import getSocket from '../utils/socket';
 import { FileText, Download, ChevronLeft, RefreshCw, Loader2, Search, X, CheckCircle, Clock, XCircle } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -64,6 +65,19 @@ const OrderFiles = () => {
   }, []);
 
   useEffect(() => { fetchBatches(); }, [fetchBatches]);
+
+  // WebSocket: auto-refresh when new orders are submitted
+  useEffect(() => {
+    const socket = getSocket();
+    const handleNewOrder = () => {
+      // Refresh pending counts immediately when a new order arrives
+      axios.get(`${BASE_URL}/order/admin/batches/pending-counts`, { headers: getAuthHeaders() })
+        .then(res => { if (res.data.success) setPendingCounts(res.data.counts); })
+        .catch(() => {});
+    };
+    socket.on('new-order', handleNewOrder);
+    return () => { socket.off('new-order', handleNewOrder); };
+  }, []);
 
   const fetchBatchDetail = async (batchId) => {
     try {

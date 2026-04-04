@@ -8,7 +8,7 @@ const AnnouncementAdmin = ({ isOpen, onClose }) => {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ title: '', message: '', isActive: true, target: 'agents', priority: 1 });
+  const [formData, setFormData] = useState({ title: '', message: '', isActive: true, target: 'agents', priority: 1, targetAudience: 'all' });
 
   const fetchAnnouncements = async () => {
     setLoading(true);
@@ -31,7 +31,7 @@ const AnnouncementAdmin = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const resetForm = () => {
-    setFormData({ title: '', message: '', isActive: true, target: 'agents', priority: 1 });
+    setFormData({ title: '', message: '', isActive: true, target: 'agents', priority: 1, targetAudience: 'all' });
     setEditingId(null);
   };
 
@@ -62,7 +62,7 @@ const AnnouncementAdmin = ({ isOpen, onClose }) => {
   };
 
   const handleEdit = (announcement) => {
-    setFormData({ title: announcement.title, message: announcement.message, isActive: announcement.isActive, target: announcement.target || 'agents', priority: announcement.priority || 1 });
+    setFormData({ title: announcement.title, message: announcement.message, isActive: announcement.isActive, target: announcement.target || 'agents', priority: announcement.priority || 1, targetAudience: announcement.targetAudience || 'all' });
     setEditingId(announcement.id);
   };
 
@@ -140,7 +140,25 @@ const AnnouncementAdmin = ({ isOpen, onClose }) => {
                         className="w-4 h-4 text-red-500 focus:ring-red-500" />
                       Shop Alert (Popup)
                     </label>
+                    <label className="flex items-center gap-2 text-emerald-300 font-medium">
+                      <input type="radio" name="target" value="product-card" checked={formData.target === 'product-card'} onChange={(e) => setFormData({ ...formData, target: e.target.value })}
+                        className="w-4 h-4 text-emerald-500 focus:ring-emerald-500" />
+                      Product Card Popup
+                    </label>
                   </div>
+                  {formData.target === 'product-card' && (
+                    <div className="flex flex-wrap gap-3 items-center">
+                      <label className="text-dark-300 text-sm">Network:</label>
+                      {['all', 'mtn', 'telecel', 'airtel tigo'].map(net => (
+                        <label key={net} className="flex items-center gap-1.5 text-dark-300 text-sm">
+                          <input type="radio" name="targetAudience" value={net} checked={formData.targetAudience === net}
+                            onChange={(e) => setFormData({ ...formData, targetAudience: e.target.value })}
+                            className="w-3.5 h-3.5 text-emerald-500 focus:ring-emerald-500" />
+                          {net === 'all' ? 'All Networks' : net.toUpperCase()}
+                        </label>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <label className="flex items-center gap-2 text-dark-300">
                       <input type="checkbox" checked={formData.isActive} onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
@@ -178,7 +196,7 @@ const AnnouncementAdmin = ({ isOpen, onClose }) => {
                               ann.target === 'shop' ? 'bg-cyan-500/20 text-cyan-400' :
                               'bg-purple-500/20 text-purple-400'
                             }`}>
-                              {ann.target === 'shop-alert' ? '🚨 Shop Alert' : ann.target === 'shop' ? 'Shop Banner' : 'Agents'}
+                              {ann.target === 'shop-alert' ? '🚨 Shop Alert' : ann.target === 'shop' ? 'Shop Banner' : ann.target === 'product-card' ? `📦 Product Card${ann.targetAudience !== 'all' ? ` (${ann.targetAudience.toUpperCase()})` : ''}` : 'Agents'}
                             </span>
                           </div>
                           <p className="text-dark-400 text-sm">{ann.message}</p>

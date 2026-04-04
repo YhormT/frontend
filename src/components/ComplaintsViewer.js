@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquareWarning, X, CheckCircle, Clock, AlertCircle, Phone, Loader2, RefreshCw, Trash2, MessageCircle } from 'lucide-react';
+import { MessageSquareWarning, X, CheckCircle, Clock, AlertCircle, Phone, Loader2, RefreshCw, Trash2, MessageCircle, Copy } from 'lucide-react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import BASE_URL from '../endpoints/endpoints';
@@ -223,7 +223,22 @@ const ComplaintsViewer = ({ isOpen, onClose }) => {
                           </div>
                           <div className="flex flex-wrap items-center gap-3 mb-2 text-sm">
                             <span className="text-cyan-400 font-medium">ID: #{complaint.id}</span>
-                            <span className="flex items-center gap-1 text-dark-400"><Phone className="w-4 h-4" /> {complaint.mobileNumber}</span>
+                            <span className="flex items-center gap-1 text-dark-400">
+                              <Phone className="w-4 h-4" /> {complaint.mobileNumber}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(complaint.mobileNumber);
+                                  const btn = e.currentTarget;
+                                  btn.classList.add('text-emerald-400');
+                                  setTimeout(() => btn.classList.remove('text-emerald-400'), 1500);
+                                }}
+                                title="Copy number"
+                                className="p-1 hover:bg-dark-700 rounded transition-colors"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                            </span>
                             {complaint.orderId && <span className="text-dark-500">Order: #{complaint.orderId}</span>}
                           </div>
                           <p className="text-dark-200">{complaint.message}</p>

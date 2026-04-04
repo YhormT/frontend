@@ -4,7 +4,7 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 import { Menu, X, Users, Package, ShoppingCart, Bell, RefreshCw, Loader2, Search, Plus, Edit, Trash2, CheckCircle, XCircle, BarChart3, Wallet, User, LogOut, RotateCcw, Eye, EyeOff, Save, Banknote, DollarSign, Table2, Key, AlertTriangle, Wifi, FileText } from 'lucide-react';
 import BASE_URL from '../endpoints/endpoints';
-import { io as socketIO } from 'socket.io-client';
+import getSocket from '../utils/socket';
 import ProductDialog from '../components/ProductDialog';
 import ComplaintsViewer from '../components/ComplaintsViewer';
 import AnnouncementAdmin from '../components/AnnouncementAdmin';
@@ -241,13 +241,13 @@ const AdminDashboard = () => {
 
   // Real-time order notifications via socket
   useEffect(() => {
-    const socket = socketIO(BASE_URL, { transports: ['websocket', 'polling'] });
-    socket.on('new-order', () => {
-      // Immediately refresh data when a new order is placed
+    const socket = getSocket();
+    const handleNewOrder = () => {
       fetchData(false);
       fetchFraudAlerts();
-    });
-    return () => socket.disconnect();
+    };
+    socket.on('new-order', handleNewOrder);
+    return () => socket.off('new-order', handleNewOrder);
   }, [fetchData, fetchFraudAlerts]);
 
   useEffect(() => {
@@ -338,11 +338,15 @@ const AdminDashboard = () => {
 
   const handleToggleSuspend = async (user) => {
     const newStatus = !user.isSuspended;
+    // Optimistically update local state so the button changes instantly
+    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, isSuspended: newStatus } : u));
     try {
       await axios.put(`${BASE_URL}/api/users/${user.id}/suspend`, { isSuspended: newStatus }, { headers: getAuthHeaders() });
       Swal.fire({ icon: 'success', title: newStatus ? 'Suspended!' : 'Unsuspended!', text: newStatus ? `${user.name} has been suspended.` : `${user.name} has been unsuspended.`, timer: 1500, showConfirmButton: false, background: '#1e293b', color: '#f1f5f9' });
       fetchUsers();
     } catch (error) {
+      // Revert on failure
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, isSuspended: !newStatus } : u));
       Swal.fire({ icon: 'error', title: 'Failed!', text: 'Could not update suspension status.', background: '#1e293b', color: '#f1f5f9' });
     }
   };
