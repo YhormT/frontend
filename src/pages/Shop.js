@@ -62,21 +62,70 @@ const Shop = () => {
     return () => socket.off('product:stock-update', fetchProducts);
   }, [fetchProducts]);
 
-  // Handle Paystack callback redirect
+  // Handle Paystack callback redirect — runs independently of the payment modal
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const paymentStatus = urlParams.get('payment');
     const reference = urlParams.get('reference') || urlParams.get('trxref');
     
     if (paymentStatus === 'callback' && reference) {
-      // Clear URL params
+      // Clear URL params immediately
       window.history.replaceState({}, document.title, window.location.pathname);
       
-      // Verify the payment
-      setShowPaymentModal(true);
-      setPaymentStep('processing');
-      setPaymentMessage('Verifying your payment...');
-      verifyPayment(reference);
+      // Show a blocking Swal while verifying (no dependency on selectedProduct)
+      Swal.fire({
+        title: 'Verifying Payment...',
+        html: 'Please wait while we confirm your payment.',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        background: '#1e293b',
+        color: '#f1f5f9',
+        didOpen: () => Swal.showLoading()
+      });
+
+      axios.post(`${BASE_URL}/api/payment/verify`, { reference })
+        .then((response) => {
+          if (response.data.success) {
+            Swal.fire({
+              title: 'Order Placed!',
+              html: `<p>Order ID: <strong>#${response.data.order?.id || 'N/A'}</strong></p><p>Use your mobile number to track your order.</p>`,
+              icon: 'success',
+              background: '#1e293b',
+              color: '#f1f5f9',
+              confirmButtonColor: '#06b6d4'
+            });
+            fetchProducts();
+          } else if (response.data.status === 'PENDING') {
+            Swal.fire({
+              title: 'Payment Pending',
+              text: 'Your payment has not been confirmed yet. Please check back shortly.',
+              icon: 'info',
+              background: '#1e293b',
+              color: '#f1f5f9',
+              confirmButtonColor: '#06b6d4'
+            });
+          } else {
+            Swal.fire({
+              title: 'Payment Failed',
+              text: response.data.message || 'Payment was not successful.',
+              icon: 'error',
+              background: '#1e293b',
+              color: '#f1f5f9',
+              confirmButtonColor: '#06b6d4'
+            });
+          }
+        })
+        .catch((error) => {
+          Swal.fire({
+            title: 'Verification Error',
+            text: error.response?.data?.message || 'Could not verify payment. Please use your mobile number to track your order.',
+            icon: 'warning',
+            background: '#1e293b',
+            color: '#f1f5f9',
+            confirmButtonColor: '#06b6d4'
+          });
+        });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

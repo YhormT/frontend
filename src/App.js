@@ -19,7 +19,8 @@ import Shop from './pages/Shop';
 import PublicStorefront from './pages/PublicStorefront';
 import BASE_URL from './endpoints/endpoints';
 
-const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+const AGENT_INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes for agents
+const ADMIN_INACTIVITY_TIMEOUT = 90 * 60 * 1000; // 1 hour 30 minutes for admin
 const WARNING_BEFORE = 60 * 1000; // 1 minute warning before logout
 
 const PrivateRoute = ({ allowedRoles }) => {
@@ -44,6 +45,9 @@ const PrivateRoute = ({ allowedRoles }) => {
     if (warningShown.current) return; // Don't reset if warning is showing
     clearTimeout(inactivityTimer.current);
     clearTimeout(warningTimer.current);
+
+    const role = localStorage.getItem('role');
+    const timeout = role === 'ADMIN' ? ADMIN_INACTIVITY_TIMEOUT : AGENT_INACTIVITY_TIMEOUT;
 
     warningTimer.current = setTimeout(() => {
       warningShown.current = true;
@@ -70,13 +74,13 @@ const PrivateRoute = ({ allowedRoles }) => {
           logoutUser();
         }
       });
-    }, INACTIVITY_TIMEOUT - WARNING_BEFORE);
+    }, timeout - WARNING_BEFORE);
 
     inactivityTimer.current = setTimeout(() => {
       Swal.close();
       warningShown.current = false;
       logoutUser();
-    }, INACTIVITY_TIMEOUT);
+    }, timeout);
   }, [logoutUser]);
 
   useEffect(() => {
