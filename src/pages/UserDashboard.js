@@ -472,7 +472,7 @@ const UserDashboard = () => {
                 const cardGradient = isMTN ? 'from-yellow-500 to-amber-600' : isTelecel ? 'from-red-500 to-rose-600' : isAirtelTigo ? 'from-blue-500 to-indigo-600' : 'from-cyan-500 to-cyan-600';
 
                 return (
-                  <div key={product.id} onClick={() => product.stock > 0 && balance > 0 && setSelectedProduct(product)}
+                  <div key={product.id} onClick={() => product.stock > 0 && setSelectedProduct(product)}
                     className={`relative overflow-hidden rounded-xl sm:rounded-2xl shadow-lg bg-gradient-to-br ${cardGradient} ${product.stock === 0 ? 'opacity-75' : 'cursor-pointer hover:scale-[1.02] active:scale-95'} transition-transform`}>
                     {product.stock === 0 && (
                       <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] z-10 flex items-center justify-center">
