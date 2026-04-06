@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import getSocket from '../utils/socket';
 import Swal from 'sweetalert2';
-import { Menu, Wallet, Package, Clock, CheckCircle, ShoppingCart, Loader2, RefreshCw, Trash2, Shield, History, X, Banknote } from 'lucide-react';
+import { Menu, Wallet, Package, Clock, CheckCircle, ShoppingCart, Loader2, RefreshCw, Trash2, Shield, History, X, Banknote, Wifi, Zap, Star, ArrowRight } from 'lucide-react';
 import BASE_URL from '../endpoints/endpoints';
 import Sidebar from '../components/Sidebar';
 import TopUp from '../components/TopUp';
@@ -324,26 +324,48 @@ const SuperAgent = () => {
             {isLoading ? <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-emerald-500" /></div> : filteredProducts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20"><Package className="w-16 h-16 text-dark-600 mb-4" /><h3 className="text-lg font-semibold text-dark-400">No products available</h3></div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {filteredProducts.map((product) => {
                   const isMTN = product.name?.includes('MTN');
                   const isTelecel = product.name?.includes('TELECEL');
                   const isAirtelTigo = product.name?.includes('AIRTEL');
-                  const cardGradient = isMTN ? 'from-yellow-500 to-amber-600' : isTelecel ? 'from-red-500 to-rose-600' : isAirtelTigo ? 'from-blue-500 to-indigo-600' : 'from-emerald-500 to-green-600';
+                  const cardGradient = isMTN ? 'from-yellow-500 to-amber-600' : isTelecel ? 'from-red-500 to-rose-600' : isAirtelTigo ? 'from-blue-500 to-indigo-600' : 'from-cyan-500 to-cyan-600';
+                  const effectivePrice = (product.usePromoPrice && product.promoPrice != null) ? product.promoPrice : product.price;
                   return (
-                    <div key={product.id} onClick={() => product.stock > 0 && setSelectedProduct(product)}
-                      className={`relative overflow-hidden rounded-xl sm:rounded-2xl shadow-lg bg-gradient-to-br ${cardGradient} ${product.stock === 0 ? 'opacity-75' : 'cursor-pointer hover:scale-[1.02] active:scale-95'} transition-transform`}>
+                    <div key={product.id} className="group relative bg-dark-800/50 backdrop-blur rounded-2xl border border-dark-700 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-cyan-500/30 hover:shadow-xl hover:shadow-cyan-500/10">
                       {product.stock === 0 && (
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] z-10 flex items-center justify-center">
-                          <span className="bg-red-500 text-white px-3 py-1.5 rounded-xl font-bold text-xs transform -rotate-12 shadow-lg">OUT OF STOCK</span>
+                        <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                          <span className="bg-red-500 text-white px-4 py-2 rounded-xl font-bold text-sm transform -rotate-12 shadow-lg">OUT OF STOCK</span>
                         </div>
                       )}
-                      <div className="p-3 sm:p-4">
-                        <span className="inline-block px-2 py-0.5 bg-white/20 backdrop-blur-sm rounded-lg text-[10px] sm:text-xs font-medium text-white mb-2">{product.name}</span>
-                        <h3 className="text-base sm:text-lg font-bold text-white mb-1">{product.description}</h3>
-                        <div className="flex items-baseline gap-1"><span className="text-xs text-white/70">GHS</span><span className="text-lg sm:text-xl font-bold text-white">{(product.usePromoPrice && product.promoPrice != null) ? product.promoPrice : product.price}</span></div>
+                      <div className={`relative p-4 sm:p-6 bg-gradient-to-br ${cardGradient}`}>
+                        <div className="absolute inset-0 bg-black/20"></div>
+                        <div className="relative flex justify-between items-start">
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Wifi className="w-4 h-4 text-white/70" />
+                              <span className="text-white/70 text-xs font-medium uppercase tracking-wider">Data Bundle</span>
+                            </div>
+                            <h3 className="text-lg sm:text-xl font-bold text-white">{product.name}</h3>
+                          </div>
+                        </div>
                       </div>
-                      <div className="absolute -top-10 -right-10 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
+                      <div className="p-4 sm:p-6">
+                        <p className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">{product.description}</p>
+                        <div className="flex items-end gap-2 mb-4 sm:mb-6">
+                          <span className="text-xl sm:text-2xl font-bold text-white">GHS {effectivePrice}</span>
+                          <span className="text-dark-500 text-xs sm:text-sm mb-1">/ bundle</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 sm:mb-6">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg text-xs font-medium border border-emerald-500/20"><Zap className="w-3 h-3" /> Instant</span>
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 text-cyan-400 rounded-lg text-xs font-medium border border-cyan-500/20"><Shield className="w-3 h-3" /> Secure</span>
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 text-purple-400 rounded-lg text-xs font-medium border border-purple-500/20"><Star className="w-3 h-3" /> Premium</span>
+                        </div>
+                        <button onClick={() => product.stock > 0 && setSelectedProduct(product)}
+                          className={`w-full py-3 sm:py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${product.stock > 0 ? `bg-gradient-to-r ${cardGradient} text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]` : 'bg-dark-700 text-dark-400 cursor-not-allowed'}`}>
+                          {product.stock > 0 ? (<><span>Order Now</span><ArrowRight className="w-5 h-5" /></>) : 'Out of Stock'}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}

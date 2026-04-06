@@ -37,7 +37,6 @@ const ProductCardPopup = ({ isOpen, onClose, product, onAddToCart, balance, cart
   const effectivePrice = (product.usePromoPrice && product.promoPrice != null) ? product.promoPrice : product.price;
 
   const headerGradient = isMTN ? 'from-yellow-500 to-amber-600' : isTelecel ? 'from-red-500 to-rose-600' : isAirtelTigo ? 'from-blue-500 to-indigo-600' : 'from-amber-500 to-yellow-600';
-  const buttonColor = isMTN ? 'from-yellow-600 to-yellow-700' : isTelecel ? 'from-red-600 to-red-700' : isAirtelTigo ? 'from-blue-600 to-blue-700' : 'from-amber-600 to-amber-700';
 
   const handleMobileChange = (value) => {
     if (/^\d{0,10}$/.test(value)) {
@@ -69,69 +68,67 @@ const ProductCardPopup = ({ isOpen, onClose, product, onAddToCart, balance, cart
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-dark-800 border border-dark-700 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div className={`bg-gradient-to-r ${headerGradient} p-5 relative overflow-hidden`}>
-          <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-          <div className="flex items-center justify-between relative z-10">
-            <div>
-              <span className="inline-block px-2 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-xs font-medium text-white mb-2">{product.name}</span>
-              <h3 className="text-xl font-bold text-white">{product.description}</h3>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-sm text-white/70">GHS</span>
-                <span className="text-2xl font-bold text-white">{effectivePrice}</span>
-              </div>
-            </div>
-            <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors active:scale-95">
-              <X className="w-5 h-5 text-white" />
-            </button>
-          </div>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+        {/* Close button */}
+        <div className="flex justify-end p-3 pb-0">
+          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Network message */}
-        {networkMessage && (
-          <div className="mx-4 mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-            <div className="flex items-start gap-2">
-              <Megaphone className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-amber-400 text-xs font-semibold">{networkMessage.title}</p>
-                <p className="text-amber-300/80 text-xs mt-0.5">{networkMessage.message}</p>
-              </div>
-            </div>
+        <div className="px-6 pb-6 pt-1">
+          {/* Product info badge */}
+          <div className="text-center mb-4">
+            <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold text-white bg-gradient-to-r ${headerGradient}`}>
+              {product.name} — {product.description}
+            </span>
+            <p className="text-gray-800 text-lg font-bold mt-2">GHS {effectivePrice}</p>
           </div>
-        )}
 
-        {/* Input */}
-        <div className="p-4 space-y-3">
-          <div>
-            <label className="block text-xs text-dark-400 mb-1.5">Mobile Number</label>
-            <input
-              type="tel"
-              inputMode="numeric"
-              placeholder="Enter 10-digit mobile number"
-              value={mobileNumber}
-              onChange={(e) => handleMobileChange(e.target.value)}
-              className={`w-full px-4 py-3 bg-dark-900 border-2 ${error ? 'border-red-500/50' : 'border-dark-600'} rounded-xl text-white placeholder-dark-500 focus:outline-none focus:border-cyan-500 text-base`}
-              maxLength={10}
-              autoFocus
-            />
-            {error && <p className="text-red-400 text-xs mt-1.5">{error}</p>}
+          {/* Title */}
+          <h3 className="text-xl font-bold text-gray-900 text-center mb-3">Enter Phone Number</h3>
+
+          {/* Warning text + network announcement */}
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
+            {networkMessage && (
+              <div className="flex items-start gap-2">
+                <Megaphone className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-red-700 text-xs font-semibold">{networkMessage.title}</p>
+                  <p className="text-red-600 text-xs mt-0.5">{networkMessage.message}</p>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Phone input */}
+          <input
+            type="tel"
+            inputMode="numeric"
+            placeholder="e.g. 0244123456"
+            value={mobileNumber}
+            onChange={(e) => handleMobileChange(e.target.value)}
+            className={`w-full px-4 py-3 bg-gray-50 border-2 ${error ? 'border-red-400' : 'border-gray-200'} rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-emerald-500 text-base mb-2`}
+            maxLength={10}
+            autoFocus
+          />
+          {error && <p className="text-red-500 text-xs mb-2">{error}</p>}
 
           {product.stock === 0 && (
-            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
-              <span className="text-red-400 text-sm font-semibold">Out of Stock</span>
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-center mb-3">
+              <span className="text-red-500 text-sm font-semibold">Out of Stock</span>
             </div>
           )}
 
+          {/* Add to Cart button */}
           <button
             onClick={handleSubmit}
             disabled={adding || balance === 0 || product.stock === 0 || mobileNumber.length !== 10}
-            className={`w-full py-3 px-4 rounded-xl font-semibold text-white transition-all active:scale-95 flex items-center justify-center gap-2 ${
+            className={`w-full py-3.5 px-4 rounded-xl font-bold text-white transition-all active:scale-95 flex items-center justify-center gap-2 text-base ${
               adding || balance === 0 || product.stock === 0 || mobileNumber.length !== 10
-                ? 'bg-dark-700 cursor-not-allowed text-dark-400'
-                : `bg-gradient-to-r ${buttonColor} shadow-lg hover:shadow-xl`
+                ? 'bg-gray-300 cursor-not-allowed text-gray-500'
+                : 'bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/25'
             }`}
           >
             {adding ? (
@@ -144,6 +141,9 @@ const ProductCardPopup = ({ isOpen, onClose, product, onAddToCart, balance, cart
               <><ShoppingCart className="w-5 h-5" /> Add to Cart</>
             )}
           </button>
+
+          {/* Done Bond Payment link */}
+          <p className="text-center text-gray-400 text-xs mt-3">Secure Transaction</p>
         </div>
       </div>
     </div>

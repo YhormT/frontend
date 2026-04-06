@@ -193,9 +193,9 @@ const ComplaintsViewer = ({ isOpen, onClose }) => {
               ))}
             </div>
 
-            <div className="p-4 overflow-y-auto flex-1">
+            <div className="p-4 overflow-y-auto flex-1 min-h-[60vh]">
               {loading ? (
-                <div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-red-500" /></div>
+                <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-red-500" /></div>
               ) : complaints.length === 0 ? (
                 <div className="text-center py-12">
                   <MessageSquareWarning className="w-12 h-12 text-dark-600 mx-auto mb-4" />

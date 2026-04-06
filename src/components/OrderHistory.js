@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { X, Search, Phone, Clock, Package, CreditCard, MessageCircle, Filter, ChevronRight, Calendar, User, DollarSign, XCircle } from 'lucide-react';
+import { X, Search, Phone, Clock, Package, CreditCard, MessageCircle, Filter, ChevronRight, Calendar, User, DollarSign, XCircle, Download } from 'lucide-react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
 import BASE_URL from '../endpoints/endpoints';
 
 const StatusBadge = ({ status }) => {
@@ -128,6 +129,41 @@ const OrderHistory = ({ isOpen, onClose, orderHistory = [], onOrderCancelled }) 
       `Please assist me with this order.`
     )}`;
     window.open(url, '_blank');
+  };
+
+  const downloadExcel = () => {
+    if (filteredItems.length === 0) {
+      Swal.fire({ icon: 'warning', title: 'No Orders', text: 'No orders to download.', background: '#1e293b', color: '#f1f5f9' });
+      return;
+    }
+
+    const dataToExport = filteredItems.map((item, idx) => {
+      let phone = item.mobileNumber || 'N/A';
+      if (phone.startsWith('233')) phone = '0' + phone.substring(3);
+      return {
+        '#': idx + 1,
+        'Order ID': item.order?.id || 'N/A',
+        'Item ID': item.id || 'N/A',
+        'Date': item.order?.createdAt ? new Date(item.order.createdAt).toLocaleString() : 'N/A',
+        'Network': item.product?.name || item.productName || 'N/A',
+        'Data Size': item.product?.description || item.productDescription || 'N/A',
+        'Phone Number': phone,
+        'Price (GHS)': item.product?.price?.toFixed(2) || item.productPrice?.toFixed(2) || '0.00',
+        'Status': item.status || 'N/A'
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 5 }, { wch: 10 }, { wch: 10 }, { wch: 22 },
+      { wch: 18 }, { wch: 15 }, { wch: 14 }, { wch: 12 }, { wch: 12 }
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Order History');
+    XLSX.writeFile(wb, `Order_History_${new Date().toISOString().slice(0, 10)}.xlsx`);
+
+    Swal.fire({ icon: 'success', title: 'Downloaded!', text: `${dataToExport.length} orders exported.`, timer: 2000, showConfirmButton: false, background: '#1e293b', color: '#f1f5f9' });
   };
 
   if (!isOpen) return null;
@@ -285,9 +321,14 @@ const OrderHistory = ({ isOpen, onClose, orderHistory = [], onOrderCancelled }) 
               <h2 className="text-xl font-bold text-white">Order History</h2>
               <p className="text-white/80 text-sm">{stats.total} orders found</p>
             </div>
-            <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors">
-              <X className="w-5 h-5 text-white" />
-            </button>
+            <div className="flex gap-2">
+              <button onClick={downloadExcel} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors" title="Download Excel">
+                <Download className="w-5 h-5 text-white" />
+              </button>
+              <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
           </div>
 
           {/* Stats */}

@@ -39,6 +39,7 @@ const OrderFiles = () => {
   const [batches, setBatches] = useState([]);
   const [pendingCounts, setPendingCounts] = useState({});
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [exporting, setExporting] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBatch, setSelectedBatch] = useState(null);
@@ -48,9 +49,9 @@ const OrderFiles = () => {
   const [page, setPage] = useState(1);
   const perPage = 15;
 
-  const fetchBatches = useCallback(async () => {
+  const fetchBatches = useCallback(async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (!isRefresh) setLoading(true);
       const [batchRes, countRes] = await Promise.all([
         axios.get(`${BASE_URL}/order/admin/batches`, { headers: getAuthHeaders() }),
         axios.get(`${BASE_URL}/order/admin/batches/pending-counts`, { headers: getAuthHeaders() }),
@@ -61,6 +62,7 @@ const OrderFiles = () => {
       console.error('Error fetching data:', err);
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   }, []);
 
@@ -134,7 +136,7 @@ const OrderFiles = () => {
       window.URL.revokeObjectURL(url);
 
       Swal.fire({ title: 'Exported', text: `${count} ${network} orders exported & set to Processing`, icon: 'success', background: '#1a1a2e', color: '#fff', confirmButtonColor: '#06b6d4', timer: 2000 });
-      fetchBatches();
+      fetchBatches(true);
     } catch (err) {
       const msg = err.response?.status === 404 ? `No pending orders for ${network}` : 'Export failed';
       Swal.fire({ title: 'Error', text: msg, icon: 'error', background: '#1a1a2e', color: '#fff' });
@@ -165,7 +167,7 @@ const OrderFiles = () => {
       const res = await axios.put(`${BASE_URL}/order/admin/batches/${batchId}/status`, { status }, { headers: getAuthHeaders() });
       if (res.data.success) {
         Swal.fire({ title: 'Updated', text: res.data.message, icon: 'success', background: '#1a1a2e', color: '#fff', confirmButtonColor: '#06b6d4' });
-        fetchBatches();
+        fetchBatches(true);
         if (selectedBatch === batchId) fetchBatchDetail(batchId);
       }
     } catch (err) {
@@ -194,7 +196,7 @@ const OrderFiles = () => {
     try {
       await axios.put(`${BASE_URL}/order/admin/batches/${batchId}/items/${itemId}/status`, { status }, { headers: getAuthHeaders() });
       fetchBatchDetail(batchId);
-      fetchBatches();
+      fetchBatches(true);
     } catch (err) {
       Swal.fire({ title: 'Error', text: err.response?.data?.message || 'Failed to update', icon: 'error', background: '#1a1a2e', color: '#fff' });
     }
@@ -389,7 +391,7 @@ const OrderFiles = () => {
 
       {/* Exported batches table */}
       <h3 className="text-white font-semibold mb-3">Exported Batches</h3>
-      {loading ? (
+      {loading && initialLoad ? (
         <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 text-cyan-400 animate-spin" /></div>
       ) : filteredBatches.length === 0 ? (
         <div className="bg-dark-800 border border-dark-700 rounded-2xl p-12 text-center">

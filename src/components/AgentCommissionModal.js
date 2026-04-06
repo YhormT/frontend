@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { X, RefreshCw, Loader2, DollarSign, Users, TrendingUp, CheckCircle, Clock, Search, Calendar, ChevronDown, ChevronUp, Wallet, Award, BarChart3, PieChart } from 'lucide-react';
+import { X, RefreshCw, Loader2, DollarSign, Users, TrendingUp, CheckCircle, Clock, Search, Calendar, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Wallet, Award, BarChart3, PieChart } from 'lucide-react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import BASE_URL from '../endpoints/endpoints';
@@ -23,17 +23,30 @@ const AgentCommissionModal = ({ isOpen, onClose }) => {
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [payingCommission, setPayingCommission] = useState(false);
   const [dateRange] = useState({ start: '', end: '' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
+  const ordersPerPage = 30;
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (page = 1) => {
     setLoading(true);
     try {
       const headers = getAuthHeaders();
-      const [ordersRes, weeklyRes] = await Promise.all([
+      const [ordersRes, allOrdersRes, weeklyRes] = await Promise.all([
         axios.get(`${BASE_URL}/api/storefront/admin/referrals`, {
           headers,
           params: {
             startDate: dateRange.start || undefined,
-            endDate: dateRange.end || undefined
+            endDate: dateRange.end || undefined,
+            page,
+            limit: ordersPerPage
+          }
+        }),
+        axios.get(`${BASE_URL}/api/storefront/admin/referrals`, {
+          headers,
+          params: {
+            startDate: dateRange.start || undefined,
+            endDate: dateRange.end || undefined,
+            limit: 10000
           }
         }),
         axios.get(`${BASE_URL}/api/storefront/admin/commissions/weekly`, { headers })
@@ -41,10 +54,15 @@ const AgentCommissionModal = ({ isOpen, onClose }) => {
 
       if (ordersRes.data.success) {
         setData({
-          orders: ordersRes.data.orders || [],
+          orders: allOrdersRes.data.orders || [],
+          paginatedOrders: ordersRes.data.orders || [],
           stats: ordersRes.data.stats || {},
           agentSummary: ordersRes.data.agentSummary || []
         });
+        if (ordersRes.data.pagination) {
+          setPagination(ordersRes.data.pagination);
+          setCurrentPage(ordersRes.data.pagination.page);
+        }
       }
 
       if (weeklyRes.data.success) {
@@ -72,12 +90,18 @@ const AgentCommissionModal = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (isOpen) {
-      fetchData();
+      fetchData(1);
     }
   }, [isOpen, fetchData]);
 
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      fetchData(newPage);
+    }
+  };
+
   const filteredOrders = useMemo(() => {
-    let filtered = data.orders;
+    let filtered = data.paginatedOrders || data.orders;
 
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
@@ -104,7 +128,7 @@ const AgentCommissionModal = ({ isOpen, onClose }) => {
     }
 
     return filtered;
-  }, [data.orders, searchTerm, statusFilter, selectedAgent]);
+  }, [data.paginatedOrders, data.orders, searchTerm, statusFilter, selectedAgent]);
 
   const agentOrders = useMemo(() => {
     const grouped = {};
@@ -600,6 +624,7 @@ const AgentCommissionModal = ({ isOpen, onClose }) => {
                   <p className="text-dark-400">No orders found</p>
                 </div>
               ) : (
+                <>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-dark-900">
@@ -643,6 +668,57 @@ const AgentCommissionModal = ({ isOpen, onClose }) => {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination Controls */}
+                {pagination.totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-dark-700">
+                    <p className="text-dark-400 text-sm">
+                      Showing page {currentPage} of {pagination.totalPages} ({pagination.total} total orders)
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage <= 1}
+                        className="p-2 bg-dark-700 hover:bg-dark-600 text-dark-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (pagination.totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= pagination.totalPages - 2) {
+                          pageNum = pagination.totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => handlePageChange(pageNum)}
+                            className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                              currentPage === pageNum
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-dark-700 text-dark-300 hover:bg-dark-600'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage >= pagination.totalPages}
+                        className="p-2 bg-dark-700 hover:bg-dark-600 text-dark-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                </>
               )}
             </div>
           )}
