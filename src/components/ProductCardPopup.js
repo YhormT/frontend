@@ -17,6 +17,17 @@ const ProductCardPopup = ({ isOpen, onClose, product, onAddToCart, balance, cart
 
   if (!isOpen || !product) return null;
 
+  const isMTN = product.name?.includes('MTN');
+  const isAirtelTigo = product.name?.includes('AIRTEL');
+
+  let warningMessage = 'Make sure the recipient has airtime before purchasing this data package. If not, the user would not receive the data and the system would not be liable for refunds.';
+  
+  if (isMTN) {
+    warningMessage = 'Must not owe airtime and must be normal numbers only.';
+  } else if (isAirtelTigo) {
+    warningMessage = 'Active SIM or must have airtime.';
+  }
+
   const handleMobileChange = (value) => {
     if (/^\d{0,10}$/.test(value)) {
       setError('');
@@ -63,7 +74,7 @@ const ProductCardPopup = ({ isOpen, onClose, product, onAddToCart, balance, cart
           {/* Warning text */}
           <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
             <p className="text-red-600 text-xs text-center leading-relaxed">
-              Make sure the recipient has airtime before purchasing this data package. If not, the user would not receive the data and the system would not be liable for refunds.
+              {warningMessage}
             </p>
           </div>
 
