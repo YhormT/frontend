@@ -47,16 +47,23 @@ const OrderFiles = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
   const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, limit: 15, total: 0, totalPages: 1 });
   const perPage = 15;
 
-  const fetchBatches = useCallback(async (isRefresh = false) => {
+  const fetchBatches = useCallback(async (targetPage = page, isRefresh = false) => {
     try {
       if (!isRefresh) setLoading(true);
       const [batchRes, countRes] = await Promise.all([
-        axios.get(`${BASE_URL}/order/admin/batches`, { headers: getAuthHeaders() }),
+        axios.get(`${BASE_URL}/order/admin/batches`, { headers: getAuthHeaders(), params: { page: targetPage, limit: perPage } }),
         axios.get(`${BASE_URL}/order/admin/batches/pending-counts`, { headers: getAuthHeaders() }),
       ]);
-      if (batchRes.data.success) setBatches(batchRes.data.batches);
+      if (batchRes.data.success) {
+        setBatches(batchRes.data.batches);
+        if (batchRes.data.pagination) {
+          setPagination(batchRes.data.pagination);
+          setPage(batchRes.data.pagination.page);
+        }
+      }
       if (countRes.data.success) setPendingCounts(countRes.data.counts);
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -64,9 +71,10 @@ const OrderFiles = () => {
       setLoading(false);
       setInitialLoad(false);
     }
-  }, []);
+  }, [page]);
 
-  useEffect(() => { fetchBatches(); }, [fetchBatches]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchBatches(1); }, []);
 
   // WebSocket: auto-refresh when new orders are submitted
   useEffect(() => {
@@ -136,7 +144,7 @@ const OrderFiles = () => {
       window.URL.revokeObjectURL(url);
 
       Swal.fire({ title: 'Exported', text: `${count} ${network} orders exported & set to Processing`, icon: 'success', background: '#1a1a2e', color: '#fff', confirmButtonColor: '#06b6d4', timer: 2000 });
-      fetchBatches(true);
+      fetchBatches(1, true);
     } catch (err) {
       const msg = err.response?.status === 404 ? `No pending orders for ${network}` : 'Export failed';
       Swal.fire({ title: 'Error', text: msg, icon: 'error', background: '#1a1a2e', color: '#fff' });
@@ -167,7 +175,7 @@ const OrderFiles = () => {
       const res = await axios.put(`${BASE_URL}/order/admin/batches/${batchId}/status`, { status }, { headers: getAuthHeaders() });
       if (res.data.success) {
         Swal.fire({ title: 'Updated', text: res.data.message, icon: 'success', background: '#1a1a2e', color: '#fff', confirmButtonColor: '#06b6d4' });
-        fetchBatches(true);
+        fetchBatches(page, true);
         if (selectedBatch === batchId) fetchBatchDetail(batchId);
       }
     } catch (err) {
@@ -196,7 +204,7 @@ const OrderFiles = () => {
     try {
       await axios.put(`${BASE_URL}/order/admin/batches/${batchId}/items/${itemId}/status`, { status }, { headers: getAuthHeaders() });
       fetchBatchDetail(batchId);
-      fetchBatches(true);
+      fetchBatches(page, true);
     } catch (err) {
       Swal.fire({ title: 'Error', text: err.response?.data?.message || 'Failed to update', icon: 'error', background: '#1a1a2e', color: '#fff' });
     }
@@ -219,6 +227,7 @@ const OrderFiles = () => {
   };
 
   const filteredBatches = batches.filter(b => {
+    if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (
       b.filename?.toLowerCase().includes(term) ||
@@ -228,8 +237,7 @@ const OrderFiles = () => {
     );
   });
 
-  const totalPages = Math.ceil(filteredBatches.length / perPage);
-  const paginatedBatches = filteredBatches.slice((page - 1) * perPage, page * perPage);
+  const totalPages = pagination.totalPages;
 
   const formatDate = (dateStr) => {
     const d = new Date(dateStr);
@@ -343,7 +351,7 @@ const OrderFiles = () => {
           </h2>
           <p className="text-dark-400 text-sm mt-1">Export pending orders by network and manage exported batches</p>
         </div>
-        <button onClick={fetchBatches} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-dark-800 border border-dark-600 rounded-xl text-dark-300 hover:text-white hover:bg-dark-700 text-sm">
+        <button onClick={() => fetchBatches(page)} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-dark-800 border border-dark-600 rounded-xl text-dark-300 hover:text-white hover:bg-dark-700 text-sm">
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
         </button>
       </div>
@@ -416,7 +424,7 @@ const OrderFiles = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-dark-700">
-                {paginatedBatches.map((batch) => {
+                {filteredBatches.map((batch) => {
                   const StatusIcon = statusIcons[batch.status] || Clock;
                   const statusClass = statusColors[batch.status] || statusColors.Pending;
                   const agentNames = batch.agents?.map(a => a.name).join(', ') || '-';
@@ -455,11 +463,11 @@ const OrderFiles = () => {
 
           {totalPages > 1 && (
             <div className="border-t border-dark-700 px-4 py-3 flex items-center justify-between">
-              <span className="text-dark-400 text-sm">Showing {(page - 1) * perPage + 1}-{Math.min(page * perPage, filteredBatches.length)} of {filteredBatches.length}</span>
+              <span className="text-dark-400 text-sm">Showing {(page - 1) * perPage + 1}-{Math.min(page * perPage, pagination.total)} of {pagination.total}</span>
               <div className="flex items-center gap-2">
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 bg-dark-700 text-dark-300 rounded-lg hover:bg-dark-600 disabled:opacity-40 text-sm">Prev</button>
+                <button onClick={() => fetchBatches(page - 1, true)} disabled={page === 1} className="px-3 py-1.5 bg-dark-700 text-dark-300 rounded-lg hover:bg-dark-600 disabled:opacity-40 text-sm">Prev</button>
                 <span className="text-dark-400 text-sm">Page {page} of {totalPages}</span>
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1.5 bg-dark-700 text-dark-300 rounded-lg hover:bg-dark-600 disabled:opacity-40 text-sm">Next</button>
+                <button onClick={() => fetchBatches(page + 1, true)} disabled={page >= totalPages} className="px-3 py-1.5 bg-dark-700 text-dark-300 rounded-lg hover:bg-dark-600 disabled:opacity-40 text-sm">Next</button>
               </div>
             </div>
           )}
