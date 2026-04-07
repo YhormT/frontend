@@ -315,7 +315,7 @@ const ProductDialog = ({ isOpen, onClose }) => {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <div className="col-span-2 sm:col-span-1 lg:col-span-2">
                 <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-widest">Name</label>
-                <input type="text" placeholder="e.g. MTN 5GB" value={productName} onChange={(e) => setProductName(e.target.value)}
+                <input type="text" placeholder="e.g. MTN" value={productName} onChange={(e) => setProductName(e.target.value)}
                   className="w-full bg-slate-900/50 border border-slate-600/30 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 focus:outline-none transition-all" />
               </div>
               <div className="col-span-2 sm:col-span-1 lg:col-span-2">

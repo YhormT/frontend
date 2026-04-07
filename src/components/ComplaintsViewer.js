@@ -211,14 +211,13 @@ const ComplaintsViewer = ({ isOpen, onClose }) => {
                             <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusStyle(complaint.status)}`}>
                               {getStatusIcon(complaint.status)} {complaint.status}
                             </span>
-                            {complaint.complaintDate && (
-                              <span className="text-xs text-dark-500">Date of Issue: {new Date(complaint.complaintDate).toLocaleDateString()}</span>
-                            )}
-                            {complaint.complaintTime && (
-                              <span className="text-xs text-dark-500">Time of Issue: {complaint.complaintTime}</span>
-                            )}
-                            {!complaint.complaintDate && !complaint.complaintTime && (
-                              <span className="text-xs text-dark-500">{new Date(complaint.createdAt).toLocaleString()}</span>
+                            <span className="text-xs text-dark-500">
+                              Submitted: {new Date(complaint.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}, {new Date(complaint.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' })}
+                            </span>
+                            {(complaint.complaintTime || complaint.complaintDate) && (
+                              <span className="text-xs text-amber-400">
+                                Issue Time: {complaint.complaintTime || '--:--'}{complaint.complaintDate ? `, ${new Date(complaint.complaintDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' })}` : ''}
+                              </span>
                             )}
                           </div>
                           <div className="flex flex-wrap items-center gap-3 mb-2 text-sm">

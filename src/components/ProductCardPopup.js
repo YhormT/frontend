@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, ShoppingCart, Megaphone } from 'lucide-react';
-import axios from 'axios';
-import BASE_URL from '../endpoints/endpoints';
+import { X, Loader2, ShoppingCart } from 'lucide-react';
 
 const ProductCardPopup = ({ isOpen, onClose, product, onAddToCart, balance, cart }) => {
   const [mobileNumber, setMobileNumber] = useState('');
   const [error, setError] = useState('');
-  const [networkMessage, setNetworkMessage] = useState(null);
   const [adding, setAdding] = useState(false);
 
   const validPrefixes = ['024', '025', '053', '054', '055', '059', '020', '050', '027', '057', '026', '056', '028'];
@@ -15,28 +12,10 @@ const ProductCardPopup = ({ isOpen, onClose, product, onAddToCart, balance, cart
     if (isOpen && product) {
       setMobileNumber('');
       setError('');
-      // Fetch product card announcement for this network
-      const networkName = product.name?.split(' - ')[0] || '';
-      if (networkName) {
-        axios.get(`${BASE_URL}/api/announcement/product-card?network=${networkName.toLowerCase()}`)
-          .then(res => {
-            const msgs = res.data?.data;
-            if (msgs && msgs.length > 0) setNetworkMessage(msgs[0]);
-            else setNetworkMessage(null);
-          })
-          .catch(() => setNetworkMessage(null));
-      }
     }
   }, [isOpen, product]);
 
   if (!isOpen || !product) return null;
-
-  const isMTN = product.name?.includes('MTN');
-  const isTelecel = product.name?.includes('TELECEL');
-  const isAirtelTigo = product.name?.includes('AIRTEL');
-  const effectivePrice = (product.usePromoPrice && product.promoPrice != null) ? product.promoPrice : product.price;
-
-  const headerGradient = isMTN ? 'from-yellow-500 to-amber-600' : isTelecel ? 'from-red-500 to-rose-600' : isAirtelTigo ? 'from-blue-500 to-indigo-600' : 'from-amber-500 to-yellow-600';
 
   const handleMobileChange = (value) => {
     if (/^\d{0,10}$/.test(value)) {
@@ -78,28 +57,14 @@ const ProductCardPopup = ({ isOpen, onClose, product, onAddToCart, balance, cart
         </div>
 
         <div className="px-6 pb-6 pt-1">
-          {/* Product info badge */}
-          <div className="text-center mb-4">
-            <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold text-white bg-gradient-to-r ${headerGradient}`}>
-              {product.name} — {product.description}
-            </span>
-            <p className="text-gray-800 text-lg font-bold mt-2">GHS {effectivePrice}</p>
-          </div>
-
           {/* Title */}
           <h3 className="text-xl font-bold text-gray-900 text-center mb-3">Enter Phone Number</h3>
 
-          {/* Warning text + network announcement */}
+          {/* Warning text */}
           <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
-            {networkMessage && (
-              <div className="flex items-start gap-2">
-                <Megaphone className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-red-700 text-xs font-semibold">{networkMessage.title}</p>
-                  <p className="text-red-600 text-xs mt-0.5">{networkMessage.message}</p>
-                </div>
-              </div>
-            )}
+            <p className="text-red-600 text-xs text-center leading-relaxed">
+              Make sure the recipient has airtime before purchasing this data package. If not, the user would not receive the data and the system would not be liable for refunds.
+            </p>
           </div>
 
           {/* Phone input */}
@@ -142,8 +107,7 @@ const ProductCardPopup = ({ isOpen, onClose, product, onAddToCart, balance, cart
             )}
           </button>
 
-          {/* Done Bond Payment link */}
-          <p className="text-center text-gray-400 text-xs mt-3">Secure Transaction</p>
+          <p className="text-center text-gray-400 text-xs mt-3">Data Bond Payment</p>
         </div>
       </div>
     </div>
