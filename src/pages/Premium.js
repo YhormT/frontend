@@ -44,7 +44,11 @@ const Premium = () => {
     const userId = localStorage.getItem('userId');
     try {
       const response = await axios.get(`${BASE_URL}/api/users/loan/${userId}`, { headers: getAuthHeaders() });
-      setLoanBalance(response.data);
+      // Defensive: only overwrite state when the response actually contains wallet data
+      // Prevents wallet vanishing to 0 if an intermittent response returns an empty/invalid body
+      if (response?.data && (response.data.loanBalance !== undefined || response.data.id !== undefined)) {
+        setLoanBalance(response.data);
+      }
     } catch (err) {
       console.error('Error fetching loan balance:', err);
     }
@@ -377,7 +381,7 @@ const Premium = () => {
         </main>
       </div>
 
-      <TopUp isOpen={showTopUp} onClose={() => { setShowTopUp(false); fetchLoanBalance(); }} />
+      <TopUp isOpen={showTopUp} onClose={() => { setShowTopUp(false); fetchLoanBalance(); }} onSuccess={fetchLoanBalance} />
       <OrderHistory isOpen={showHistory} onClose={() => setShowHistory(false)} orderHistory={orderHistory} onOrderCancelled={() => { fetchOrderHistory(); fetchLoanBalance(); }} />
       <TransactionsModal isOpen={showTransactions} onClose={() => setShowTransactions(false)} />
       <UploadExcel isOpen={showUploadExcel} onClose={() => setShowUploadExcel(false)} onUploadSuccess={fetchData} />

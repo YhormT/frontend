@@ -195,12 +195,14 @@ const TopUp = ({ isOpen, onClose, onSuccess }) => {
       }
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Something went wrong. Please try again.';
+      const isAlreadyUsed = errorMessage.toLowerCase().includes('already been used');
       await Swal.fire({
-        icon: 'error',
-        title: 'Error',
+        icon: isAlreadyUsed ? 'warning' : 'error',
+        title: isAlreadyUsed ? 'Transaction Already Processed' : 'Error',
         text: errorMessage,
         background: '#1e293b',
-        color: '#f1f5f9'
+        color: '#f1f5f9',
+        confirmButtonColor: isAlreadyUsed ? '#f59e0b' : '#ef4444'
       });
     } finally {
       setLoading(false);

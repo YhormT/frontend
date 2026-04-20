@@ -81,7 +81,7 @@ const OrderHistory = ({ isOpen, onClose, orderHistory = [], onOrderCancelled }) 
       total: items.length,
       pending: items.filter(i => i.status === 'Pending').length,
       completed: items.filter(i => i.status === 'Completed').length,
-      totalAmount: items.reduce((sum, i) => sum + (i.product?.price || 0), 0),
+      totalAmount: items.reduce((sum, i) => sum + (i.productPrice != null ? i.productPrice : (i.product?.price || 0)), 0),
       totalGB
     };
 
@@ -148,7 +148,7 @@ const OrderHistory = ({ isOpen, onClose, orderHistory = [], onOrderCancelled }) 
         'Network': item.product?.name || item.productName || 'N/A',
         'Data Size': item.product?.description || item.productDescription || 'N/A',
         'Phone Number': phone,
-        'Price (GHS)': item.product?.price?.toFixed(2) || item.productPrice?.toFixed(2) || '0.00',
+        'Price (GHS)': (item.productPrice != null ? item.productPrice : item.product?.price)?.toFixed(2) || '0.00',
         'Status': item.status || 'N/A'
       };
     });
@@ -214,7 +214,7 @@ const OrderHistory = ({ isOpen, onClose, orderHistory = [], onOrderCancelled }) 
                 </div>
                 <div className="flex justify-between">
                   <span className="text-dark-400">Price:</span>
-                  <span className="text-emerald-400 font-bold">GHS {item.product?.price?.toFixed(2) || '0.00'}</span>
+                  <span className="text-emerald-400 font-bold">GHS {(item.productPrice != null ? item.productPrice : item.product?.price)?.toFixed(2) || '0.00'}</span>
                 </div>
               </div>
             </div>
@@ -276,7 +276,7 @@ const OrderHistory = ({ isOpen, onClose, orderHistory = [], onOrderCancelled }) 
                   <DollarSign className="w-5 h-5 text-emerald-400" />
                   <span className="text-dark-300 font-medium">Total Amount</span>
                 </div>
-                <span className="text-2xl font-bold text-emerald-400">GHS {order.totalAmount?.toFixed(2) || item.product?.price?.toFixed(2) || '0.00'}</span>
+                <span className="text-2xl font-bold text-emerald-400">GHS {order.totalAmount?.toFixed(2) || (item.productPrice != null ? item.productPrice : item.product?.price)?.toFixed(2) || '0.00'}</span>
               </div>
             </div>
 
@@ -473,7 +473,7 @@ const OrderHistory = ({ isOpen, onClose, orderHistory = [], onOrderCancelled }) 
                     </div>
                     <div className="flex items-center gap-2">
                       <CreditCard className="w-4 h-4 text-emerald-500" />
-                      <span className="text-dark-300 truncate">GHS {item.product?.price || '0'}</span>
+                      <span className="text-dark-300 truncate">GHS {(item.productPrice != null ? item.productPrice : item.product?.price) || '0'}</span>
                     </div>
                   </div>
                 </div>

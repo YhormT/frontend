@@ -200,7 +200,7 @@ const Shop = () => {
     try {
       const response = await axios.post(`${BASE_URL}/api/payment/initialize`, {
         mobileNumber,
-        amount: selectedProduct.price,
+        amount: (selectedProduct.usePromoPrice && selectedProduct.promoPrice != null) ? selectedProduct.promoPrice : selectedProduct.price,
         productId: selectedProduct.id,
         productName: selectedProduct.name
       });
@@ -471,7 +471,7 @@ const Shop = () => {
                   <p className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">{product.description}</p>
                   
                   <div className="flex items-end gap-2 mb-4 sm:mb-6">
-                    <span className="text-xl sm:text-2xl font-bold text-white">GHS {product.price.toFixed(2)}</span>
+                    <span className="text-xl sm:text-2xl font-bold text-white">GHS {((product.usePromoPrice && product.promoPrice != null) ? product.promoPrice : product.price).toFixed(2)}</span>
                     <span className="text-dark-500 text-xs sm:text-sm mb-1">/ bundle</span>
                   </div>
                   
@@ -535,7 +535,7 @@ const Shop = () => {
               <div className="bg-dark-900/50 rounded-xl p-3 mb-4 border border-dark-700">
                 <div className="flex justify-between items-center">
                   <span className="text-dark-400 text-sm">Amount</span>
-                  <span className="text-xl font-bold text-white">GHS {selectedProduct.price.toFixed(2)}</span>
+                  <span className="text-xl font-bold text-white">GHS {((selectedProduct.usePromoPrice && selectedProduct.promoPrice != null) ? selectedProduct.promoPrice : selectedProduct.price).toFixed(2)}</span>
                 </div>
               </div>
 
