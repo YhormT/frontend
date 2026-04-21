@@ -27,7 +27,7 @@ const getAuthHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('t
 const TransactionalAdminModal = ({ isOpen, onClose }) => {
   const [transactions, setTransactions] = useState([]);
   const [shopOrders, setShopOrders] = useState([]);
-  const [allOrders, setAllOrders] = useState([]);
+  const [shopServerStats, setShopServerStats] = useState({ totalOrders: 0, totalAmount: 0, totalGB: 0 });
   const [loading, setLoading] = useState(false);
   const [shopLoading, setShopLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('transactions');
@@ -42,6 +42,19 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
   const [shopPage, setShopPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
   const [serverStats, setServerStats] = useState({ totalTransactions: 0, totalCredits: 0, totalDebits: 0, netBalance: 0 });
+  // DB-aggregated overview (revenue/expenses/GB/sales-by-agent/shop totals)
+  // Replaces the previous 200-row client-side reduce that produced wrong
+  // figures whenever there were more than ~200 orders in the selected range.
+  const [serverOverview, setServerOverview] = useState({
+    revenue: 0,
+    revenueCount: 0,
+    expenses: 0,
+    expenseCount: 0,
+    totalGB: 0,
+    shop: { total: 0, totalAmount: 0, totalGB: 0 },
+    salesByAgent: []
+  });
+  const [overviewLoading, setOverviewLoading] = useState(false);
   // Separate filters for shop orders
   const [shopFilters, setShopFilters] = useState({ name: '', phone: '', product: '', status: '', startDate: '', endDate: '' });
   // Referrals state
@@ -100,17 +113,28 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
   const fetchShopOrders = useCallback(async () => {
     setShopLoading(true);
     try {
-      const res = await axios.get(`${BASE_URL}/api/shop/orders`, { headers: getAuthHeaders() });
+      const params = new URLSearchParams();
+      // Honour either the main date filter or the shop-tab-specific dates so
+      // the server aggregates over the same window the user is viewing.
+      const s = shopFilters.startDate || startDate;
+      const e = shopFilters.endDate || endDate;
+      if (s) params.append('startDate', s);
+      if (e) params.append('endDate', e);
+      const qs = params.toString();
+      const url = `${BASE_URL}/api/shop/orders${qs ? `?${qs}` : ''}`;
+      const res = await axios.get(url, { headers: getAuthHeaders() });
       if (res.data.success) {
         setShopOrders(res.data.orders || []);
+        setShopServerStats(res.data.stats || { totalOrders: 0, totalAmount: 0, totalGB: 0 });
       }
     } catch (error) {
       console.error('Error fetching shop orders:', error);
       setShopOrders([]);
+      setShopServerStats({ totalOrders: 0, totalAmount: 0, totalGB: 0 });
     } finally {
       setShopLoading(false);
     }
-  }, []);
+  }, [shopFilters.startDate, shopFilters.endDate, startDate, endDate]);
 
   const fetchReferralOrders = useCallback(async () => {
     setReferralLoading(true);
@@ -136,23 +160,43 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
     }
   }, [referralFilters]);
 
-  // Fetch orders only once when modal opens (lightweight - no limit=999999)
-  const fetchOrders = useCallback(async () => {
+  // DB-aggregated overview (revenue/expenses/GB/sales-by-agent/shop totals).
+  // Re-fetched whenever the main date range changes so every tab stays in
+  // sync with the selected window.
+  const fetchOverview = useCallback(async () => {
+    setOverviewLoading(true);
     try {
-      const res = await axios.get(`${BASE_URL}/order/admin/allorder?limit=200`, { headers: getAuthHeaders() });
-      const ordersData = res.data?.data || res.data?.orders || [];
-      setAllOrders(ordersData);
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      const qs = params.toString();
+      const url = `${BASE_URL}/api/admin-overview${qs ? `?${qs}` : ''}`;
+      const res = await axios.get(url, { headers: getAuthHeaders() });
+      if (res.data?.success) {
+        const d = res.data.data || {};
+        setServerOverview({
+          revenue: d.revenue || 0,
+          revenueCount: d.revenueCount || 0,
+          expenses: d.expenses || 0,
+          expenseCount: d.expenseCount || 0,
+          totalGB: d.totalGB || 0,
+          shop: d.shop || { total: 0, totalAmount: 0, totalGB: 0 },
+          salesByAgent: Array.isArray(d.salesByAgent) ? d.salesByAgent : []
+        });
+      }
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error('Error fetching admin overview:', error);
+    } finally {
+      setOverviewLoading(false);
     }
-  }, []);
+  }, [startDate, endDate]);
 
   useEffect(() => {
     if (isOpen) {
       fetchTransactions();
-      fetchOrders();
+      fetchOverview();
     }
-  }, [isOpen, fetchTransactions, fetchOrders]);
+  }, [isOpen, fetchTransactions, fetchOverview]);
 
   useEffect(() => {
     if (isOpen && activeTab === 'shop') fetchShopOrders();
@@ -174,99 +218,39 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
     });
   }, [transactions, networkFilter]);
 
-  // Filter orders with same filters as transactions (search, network, date)
-  const filteredOrders = useMemo(() => {
-    let filtered = allOrders;
-    
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(order => {
-        const productName = (order.product?.name || '').toLowerCase();
-        const productDesc = (order.product?.description || '').toLowerCase();
-        const userName = (order.user?.name || '').toLowerCase();
-        const phoneNumber = (order.phoneNumber || '').toLowerCase();
-        return productName.includes(searchLower) || productDesc.includes(searchLower) || userName.includes(searchLower) || phoneNumber.includes(searchLower);
-      });
-    }
-    
-    if (networkFilter) {
-      filtered = filtered.filter(order => {
-        const productName = (order.product?.name || '').toUpperCase();
-        if (networkFilter === 'MTN') return productName.includes('MTN');
-        if (networkFilter === 'AIRTELTIGO') return productName.includes('AIRTEL') || productName.includes('TIGO');
-        if (networkFilter === 'TELECEL') return productName.includes('TELECEL') || productName.includes('VODAFONE');
-        return true;
-      });
-    }
-    
-    if (startDate) {
-      const start = new Date(startDate + 'T00:00:00');
-      filtered = filtered.filter(order => {
-        const d = new Date(order.order?.createdAt || order.createdAt);
-        return d >= start;
-      });
-    }
-    if (endDate) {
-      const end = new Date(endDate + 'T23:59:59.999');
-      filtered = filtered.filter(order => {
-        const d = new Date(order.order?.createdAt || order.createdAt);
-        return d <= end;
-      });
-    }
-    
-    return filtered;
-  }, [allOrders, search, networkFilter, startDate, endDate]);
-
-  // Stats now come from the server-side stats endpoint (fast DB aggregation)
+  // Stats combine transaction totals (from /transactions/stats) with
+  // DB-aggregated order totals (from /admin-overview) so we always show
+  // the correct revenue/expenses/GB regardless of dataset size.
   const stats = useMemo(() => {
     const total = serverStats.totalTransactions || pagination.total || 0;
     const credits = serverStats.totalCredits || 0;
     const debits = serverStats.totalDebits || 0;
     const txNet = credits + debits;
 
-    // Revenue/expenses/GB still computed from the limited orders set
-    let revenue = 0, revenueOrderCount = 0, totalGB = 0, expenses = 0, expenseCount = 0;
-    filteredOrders.forEach(order => {
-      const status = (order.order?.items?.[0]?.status || order.status || '').toLowerCase();
-      const price = order.product?.price || 0;
-      const quantity = order.quantity || order.order?.items?.[0]?.quantity || 1;
-      if (status !== 'cancelled' && status !== 'canceled') {
-        revenue += quantity * price;
-        revenueOrderCount++;
-      }
-      if (status === 'completed') {
-        const userEmail = (order.user?.email || '').toLowerCase();
-        const userName = (order.user?.name || '').toLowerCase();
-        const isShopOrder = userEmail.includes('shop@') || userName === 'shop';
-        if (!isShopOrder) {
-          const description = order.product?.description || '';
-          const match = description.match(/(\d+(?:\.\d+)?)\s*GB/i);
-          if (match) totalGB += parseFloat(match[1]);
-        }
-      }
-      if (status === 'cancelled' || status === 'canceled') {
-        expenses += quantity * price;
-        expenseCount++;
-      }
-    });
+    const revenue = serverOverview.revenue || 0;
+    const revenueOrderCount = serverOverview.revenueCount || 0;
+    const expenses = serverOverview.expenses || 0;
+    const expenseCount = serverOverview.expenseCount || 0;
+    const totalGB = serverOverview.totalGB || 0;
     const net = revenue - expenses;
     return { total, credits, debits, txNet, revenue, revenueOrderCount, expenses, expenseCount, net, totalGB };
-  }, [serverStats, pagination, filteredOrders]);
+  }, [serverStats, pagination, serverOverview]);
 
+  // Per-agent sales come from the DB aggregate so every agent who had an
+  // order in the selected window is represented, not just those whose
+  // transactions happen to be on the current paginated page.
   const userSales = useMemo(() => {
-    const salesMap = new Map();
-    // Exclude cancelled orders from sales
-    filteredTransactions
-      .filter(tx => tx.type === 'ORDER' && !tx.description?.toLowerCase().includes('cancelled') && !tx.description?.toLowerCase().includes('refund'))
-      .forEach(tx => {
-        const name = tx.user?.name || 'Unknown';
-        const existing = salesMap.get(name) || { name, orders: 0, total: 0 };
-        existing.orders += 1;
-        existing.total += Math.abs(tx.amount);
-        salesMap.set(name, existing);
-      });
-    return Array.from(salesMap.values()).sort((a, b) => b.total - a.total);
-  }, [filteredTransactions]);
+    const agentSearch = (search || '').toLowerCase();
+    const source = serverOverview.salesByAgent || [];
+    const mapped = source.map(a => ({
+      name: a.name || 'Unknown',
+      role: a.role || '',
+      orders: a.orders || 0,
+      total: a.total || 0
+    }));
+    if (!agentSearch) return mapped;
+    return mapped.filter(u => (u.name || '').toLowerCase().includes(agentSearch));
+  }, [serverOverview.salesByAgent, search]);
 
   const exportToExcel = () => {
     const data = filteredTransactions.map(tx => ({
@@ -305,7 +289,22 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
     return filtered;
   }, [shopOrders, shopFilters]);
 
+  // When no client-side filter is applied (name/phone/product/status), use
+  // the server-aggregated stats so totals reflect every order in the selected
+  // date window regardless of pagination. Otherwise fall back to the client
+  // reduction over the currently visible rows.
+  const hasClientShopFilter = Boolean(
+    shopFilters.name || shopFilters.phone || shopFilters.product || shopFilters.status
+  );
+
   const shopStats = useMemo(() => {
+    if (!hasClientShopFilter) {
+      return {
+        total: shopServerStats.totalOrders || 0,
+        totalAmount: shopServerStats.totalAmount || 0,
+        totalGB: shopServerStats.totalGB || 0
+      };
+    }
     const completed = filteredShopOrders.filter(o => o.status?.toLowerCase() === 'completed');
     const totalAmount = filteredShopOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
     let totalGB = 0;
