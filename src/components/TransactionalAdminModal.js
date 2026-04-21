@@ -314,7 +314,7 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
       if (match) totalGB += parseFloat(match[1]);
     });
     return { total: filteredShopOrders.length, totalAmount, totalGB };
-  }, [filteredShopOrders]);
+  }, [filteredShopOrders, hasClientShopFilter, shopServerStats.totalOrders, shopServerStats.totalAmount, shopServerStats.totalGB]);
 
   const tabs = [
     { id: 'transactions', name: 'Transactions' },
@@ -506,27 +506,105 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
                   )}
                 </div>
               ) : activeTab === 'sales' ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-dark-900">
-                      <tr className="text-left text-dark-400 text-sm">
-                        <th className="px-4 py-3">User</th>
-                        <th className="px-4 py-3">Orders</th>
-                        <th className="px-4 py-3">Total Sales</th>
-                        <th className="px-4 py-3">Avg Order</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {userSales.map((user, i) => (
-                        <tr key={i} className="border-t border-dark-700 hover:bg-dark-800/50">
-                          <td className="px-4 py-3 text-white font-medium">{user.name}</td>
-                          <td className="px-4 py-3 text-dark-300">{user.orders}</td>
-                          <td className="px-4 py-3 text-cyan-400 font-semibold">{formatAmount(user.total)}</td>
-                          <td className="px-4 py-3 text-dark-300">{formatAmount(user.total / user.orders)}</td>
+                <div>
+                  {/* Quick filters: Today / Yesterday / All Time.
+                      All Time = no date filter → every agent & every sale in
+                      the system. Today/Yesterday set the main date range so
+                      the server re-aggregates just that single day and
+                      returns every agent who sold in it. */}
+                  {(() => {
+                    const pad = (n) => String(n).padStart(2, '0');
+                    const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+                    const now = new Date();
+                    const todayStr = fmt(now);
+                    const yest = new Date(now); yest.setDate(now.getDate() - 1);
+                    const yestStr = fmt(yest);
+                    const isToday = startDate === todayStr && endDate === todayStr;
+                    const isYesterday = startDate === yestStr && endDate === yestStr;
+                    const isAllTime = !startDate && !endDate;
+                    const baseBtn = 'px-4 py-2 rounded-lg text-sm font-medium transition-colors';
+                    const active = 'bg-indigo-500 text-white';
+                    const inactive = 'bg-dark-800 hover:bg-dark-700 text-dark-200 border border-dark-700';
+                    return (
+                      <div className="flex flex-wrap items-center gap-2 mb-4">
+                        <span className="text-dark-400 text-sm mr-2">Quick filter:</span>
+                        <button
+                          type="button"
+                          onClick={() => { setStartDate(todayStr); setEndDate(todayStr); }}
+                          className={`${baseBtn} ${isToday ? active : inactive}`}
+                        >Today</button>
+                        <button
+                          type="button"
+                          onClick={() => { setStartDate(yestStr); setEndDate(yestStr); }}
+                          className={`${baseBtn} ${isYesterday ? active : inactive}`}
+                        >Yesterday</button>
+                        <button
+                          type="button"
+                          onClick={() => { setStartDate(''); setEndDate(''); }}
+                          className={`${baseBtn} ${isAllTime ? active : inactive}`}
+                        >All Time</button>
+                        {overviewLoading && (
+                          <span className="flex items-center gap-2 text-dark-400 text-sm ml-2">
+                            <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Grand-total strip so admins can instantly see the
+                      combined sales across every agent in the current window. */}
+                  {userSales.length > 0 && (() => {
+                    const grandOrders = userSales.reduce((s, u) => s + (u.orders || 0), 0);
+                    const grandTotal = userSales.reduce((s, u) => s + (u.total || 0), 0);
+                    const grandAvg = grandOrders ? grandTotal / grandOrders : 0;
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4">
+                        <div className="bg-dark-900/50 border border-indigo-500/30 rounded-xl p-3">
+                          <p className="text-indigo-400 text-xs">Agents</p>
+                          <p className="text-xl font-bold text-white">{userSales.length}</p>
+                        </div>
+                        <div className="bg-dark-900/50 border border-cyan-500/30 rounded-xl p-3">
+                          <p className="text-cyan-400 text-xs">Total Orders</p>
+                          <p className="text-xl font-bold text-white">{grandOrders}</p>
+                        </div>
+                        <div className="bg-dark-900/50 border border-emerald-500/30 rounded-xl p-3">
+                          <p className="text-emerald-400 text-xs">Total Sales</p>
+                          <p className="text-xl font-bold text-emerald-400">{formatAmount(grandTotal)}</p>
+                        </div>
+                        <div className="bg-dark-900/50 border border-orange-500/30 rounded-xl p-3">
+                          <p className="text-orange-400 text-xs">Avg Order (All)</p>
+                          <p className="text-xl font-bold text-orange-400">{formatAmount(grandAvg)}</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-dark-900">
+                        <tr className="text-left text-dark-400 text-sm">
+                          <th className="px-4 py-3">User</th>
+                          <th className="px-4 py-3">Orders</th>
+                          <th className="px-4 py-3">Total Sales</th>
+                          <th className="px-4 py-3">Avg Order</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {userSales.map((user, i) => (
+                          <tr key={i} className="border-t border-dark-700 hover:bg-dark-800/50">
+                            <td className="px-4 py-3 text-white font-medium">{user.name}</td>
+                            <td className="px-4 py-3 text-dark-300">{user.orders}</td>
+                            <td className="px-4 py-3 text-cyan-400 font-semibold">{formatAmount(user.total)}</td>
+                            <td className="px-4 py-3 text-dark-300">{formatAmount(user.orders ? user.total / user.orders : 0)}</td>
+                          </tr>
+                        ))}
+                        {userSales.length === 0 && !overviewLoading && (
+                          <tr><td colSpan="4" className="px-4 py-8 text-center text-dark-400">No sales in the selected period</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ) : activeTab === 'balance' ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
