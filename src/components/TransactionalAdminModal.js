@@ -84,6 +84,7 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
       params.append('limit', itemsPerPage);
       if (debouncedSearch) params.append('search', debouncedSearch);
       if (typeFilter) params.append('type', typeFilter);
+      if (networkFilter) params.append('network', networkFilter);
       if (amountFilter === 'credits') params.append('amountFilter', 'positive');
       else if (amountFilter === 'debits') params.append('amountFilter', 'negative');
       if (startDate) params.append('startDate', startDate);
@@ -108,7 +109,7 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, debouncedSearch, typeFilter, amountFilter, startDate, endDate]);
+  }, [currentPage, debouncedSearch, typeFilter, networkFilter, amountFilter, startDate, endDate]);
 
   const fetchShopOrders = useCallback(async () => {
     setShopLoading(true);
@@ -169,6 +170,8 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
       const params = new URLSearchParams();
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
+      if (debouncedSearch) params.append('search', debouncedSearch);
+      if (networkFilter) params.append('network', networkFilter);
       const qs = params.toString();
       const url = `${BASE_URL}/api/admin-overview${qs ? `?${qs}` : ''}`;
       const res = await axios.get(url, { headers: getAuthHeaders() });
@@ -189,7 +192,7 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
     } finally {
       setOverviewLoading(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, debouncedSearch, networkFilter]);
 
   useEffect(() => {
     if (isOpen) {
@@ -206,17 +209,9 @@ const TransactionalAdminModal = ({ isOpen, onClose }) => {
     if (isOpen && activeTab === 'referrals') fetchReferralOrders();
   }, [isOpen, activeTab, fetchReferralOrders]);
 
-  // Server handles filtering now - only apply network filter client-side (not supported server-side)
-  const filteredTransactions = useMemo(() => {
-    if (!networkFilter) return transactions;
-    return transactions.filter(tx => {
-      const desc = (tx.description || '').toUpperCase();
-      if (networkFilter === 'MTN') return desc.includes('MTN');
-      if (networkFilter === 'AIRTELTIGO') return desc.includes('AIRTEL') || desc.includes('TIGO');
-      if (networkFilter === 'TELECEL') return desc.includes('TELECEL') || desc.includes('VODAFONE');
-      return true;
-    });
-  }, [transactions, networkFilter]);
+  // All filtering (search, type, amount, network, date) is now done
+  // server-side so the list and the stat cards stay perfectly in sync.
+  const filteredTransactions = transactions;
 
   // Stats combine transaction totals (from /transactions/stats) with
   // DB-aggregated order totals (from /admin-overview) so we always show
