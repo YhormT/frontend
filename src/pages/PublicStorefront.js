@@ -6,6 +6,7 @@ import { Package, Loader2, Phone, XCircle, Shield, X, Filter, Wifi, Zap, Star, A
 import BASE_URL from '../endpoints/endpoints';
 import ComplaintModal from '../components/ComplaintModal';
 import ShopFloatingChatButton from '../components/ShopFloatingChatButton';
+import { WhatsAppCommunityBanner, WhatsAppCommunityFAB } from '../components/WhatsAppCommunity';
 
 const PublicStorefront = () => {
   const { slug } = useParams();
@@ -346,6 +347,9 @@ const PublicStorefront = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* WhatsApp Community CTA */}
+        <WhatsAppCommunityBanner />
+
         {/* Filter Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 p-6 bg-dark-800/50 backdrop-blur rounded-2xl border border-dark-700">
           <div className="flex items-center gap-3">
@@ -558,6 +562,7 @@ const PublicStorefront = () => {
       )}
 
       <ComplaintModal isOpen={showComplaintModal} onClose={() => setShowComplaintModal(false)} />
+      <WhatsAppCommunityFAB />
       <ShopFloatingChatButton agentId={storefront?.agent?.id} agentName={storefront?.agent?.name} />
     </div>
   );

@@ -6,6 +6,7 @@ import BASE_URL from '../endpoints/endpoints';
 import ComplaintModal from '../components/ComplaintModal';
 import ShopAnnouncementBanner from '../components/ShopAnnouncementBanner';
 import ShopFloatingChatButton from '../components/ShopFloatingChatButton';
+import { WhatsAppCommunityBanner, WhatsAppCommunityFAB } from '../components/WhatsAppCommunity';
 import getSocket from '../utils/socket';
 
 
@@ -398,6 +399,9 @@ const Shop = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* WhatsApp Community CTA */}
+        <WhatsAppCommunityBanner />
+
         {/* Filter Section */}
         <div ref={filterRef} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 p-6 bg-dark-800/50 backdrop-blur rounded-2xl border border-dark-700">
           <div className="flex items-center gap-3">
@@ -692,6 +696,7 @@ const Shop = () => {
       )}
 
       <ComplaintModal isOpen={showComplaintModal} onClose={() => setShowComplaintModal(false)} />
+      <WhatsAppCommunityFAB />
       <ShopFloatingChatButton />
 
       {/* Shop Alert Popup - shows every visit, only closes on OK */}
