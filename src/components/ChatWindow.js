@@ -143,12 +143,12 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
   }, [token]);
 
   const fetchShopConversations = useCallback(async () => {
-    if (!isAdmin) return;
+    if (!token) return;
     try {
       const res = await axios.get(`${BASE_URL}/api/shop-chat/conversations/admin`, { headers: { Authorization: `Bearer ${token}` } });
       if (res.data.success) setShopConversations(res.data.conversations);
     } catch (e) { console.error('Error fetching shop conversations:', e); }
-  }, [token, isAdmin]);
+  }, [token]);
 
   const fetchAgents = useCallback(async () => {
     try {
@@ -420,7 +420,7 @@ const ChatWindow = ({ isOpen, onClose, currentUser }) => {
   // Merge agent conversations and shop conversations into one sorted list
   const allConversations = [
     ...conversations.map(c => ({ ...c, _isShop: false })),
-    ...(isAdmin ? shopConversations.map(c => ({
+    ...(shopConversations.length ? shopConversations.map(c => ({
       ...c,
       _isShop: true,
       otherUser: { name: c.displayName, id: `shop-${c.id}`, isLoggedIn: false },

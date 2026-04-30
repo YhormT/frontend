@@ -4,7 +4,7 @@ import axios from 'axios';
 import BASE_URL from '../endpoints/endpoints';
 import ShopChatWindow from './ShopChatWindow';
 
-const ShopFloatingChatButton = () => {
+const ShopFloatingChatButton = ({ agentId = null, agentName = null }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const phone = localStorage.getItem('shopChatPhone');
@@ -44,7 +44,7 @@ const ShopFloatingChatButton = () => {
         </button>
       )}
 
-      <ShopChatWindow isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      <ShopChatWindow isOpen={isOpen} onClose={() => setIsOpen(false)} targetAgentId={agentId} targetAgentName={agentName} />
     </>
   );
 };

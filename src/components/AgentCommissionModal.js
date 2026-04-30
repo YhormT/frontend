@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { X, RefreshCw, Loader2, DollarSign, Users, TrendingUp, CheckCircle, Clock, Search, Calendar, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Wallet, Award, BarChart3, PieChart } from 'lucide-react';
+import { X, RefreshCw, Loader2, DollarSign, Users, TrendingUp, CheckCircle, Clock, Search, Calendar, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Wallet, Award, BarChart3, PieChart, FileText, ThumbsUp, ThumbsDown } from 'lucide-react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import BASE_URL from '../endpoints/endpoints';
@@ -26,6 +26,11 @@ const AgentCommissionModal = ({ isOpen, onClose }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
   const ordersPerPage = 30;
+
+  // Commission requests
+  const [commissionRequests, setCommissionRequests] = useState([]);
+  const [requestsFilter, setRequestsFilter] = useState('all');
+  const [pendingCount, setPendingCount] = useState(0);
 
   const fetchData = useCallback(async (page = 1) => {
     setLoading(true);
@@ -88,11 +93,108 @@ const AgentCommissionModal = ({ isOpen, onClose }) => {
     }
   }, [dateRange]);
 
+  const fetchCommissionRequests = useCallback(async () => {
+    try {
+      const headers = getAuthHeaders();
+      const [allRes, countRes] = await Promise.all([
+        axios.get(`${BASE_URL}/api/commission-requests/all`, { headers, params: { status: requestsFilter } }),
+        axios.get(`${BASE_URL}/api/commission-requests/pending-count`, { headers })
+      ]);
+      if (allRes.data.success) setCommissionRequests(allRes.data.data);
+      if (countRes.data.success) setPendingCount(countRes.data.count);
+    } catch (error) {
+      console.error('Error fetching commission requests:', error);
+    }
+  }, [requestsFilter]);
+
+  const handleApproveRequest = async (request) => {
+    const { value: formValues } = await Swal.fire({
+      title: 'Approve Commission Request',
+      html: `
+        <div style="text-align: left; padding: 10px 0;">
+          <div style="background: #0f172a; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+            <p style="margin: 4px 0;"><strong>Agent:</strong> ${request.agent?.name || 'Unknown'}</p>
+            <p style="margin: 4px 0;"><strong>Customer:</strong> ${request.customerPhone}</p>
+            <p style="margin: 4px 0;"><strong>Network:</strong> ${request.network}</p>
+            <p style="margin: 4px 0;"><strong>Data Size:</strong> ${request.dataSize}</p>
+            <p style="margin: 4px 0;"><strong>Price Paid:</strong> ${formatAmount(request.price)}</p>
+          </div>
+          ${request.adminNotes ? `<div style="background: #422006; border: 1px solid #92400e; padding: 10px; border-radius: 8px; margin-bottom: 12px; color: #fbbf24; font-size: 13px;">${request.adminNotes}</div>` : ''}
+          <label style="display: block; margin-bottom: 6px; font-weight: 600;">Commission Amount (GHS) ${request.commission != null ? '<span style="color:#10b981;font-weight:400;font-size:12px;">(auto-suggested)</span>' : ''}</label>
+          <input id="swal-commission" type="number" step="0.01" min="0" value="${request.commission != null ? request.commission : ''}" placeholder="e.g. 2.50" class="swal2-input" style="margin: 0; width: 100%;" />
+          <label style="display: block; margin: 12px 0 6px 0; font-weight: 600;">Admin Notes (optional)</label>
+          <textarea id="swal-notes" class="swal2-textarea" placeholder="Optional notes..." style="margin: 0; width: 100%;"></textarea>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Approve',
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#64748b',
+      background: '#1e293b',
+      color: '#f1f5f9',
+      preConfirm: () => {
+        const commission = document.getElementById('swal-commission').value;
+        const notes = document.getElementById('swal-notes').value;
+        if (!commission || parseFloat(commission) <= 0) {
+          Swal.showValidationMessage('Commission amount must be greater than 0');
+          return false;
+        }
+        return { commission: parseFloat(commission), adminNotes: notes };
+      }
+    });
+
+    if (formValues) {
+      try {
+        await axios.put(`${BASE_URL}/api/commission-requests/${request.id}/approve`, formValues, { headers: getAuthHeaders() });
+        Swal.fire({ icon: 'success', title: 'Approved!', text: 'Commission request approved', timer: 1500, background: '#1e293b', color: '#f1f5f9', showConfirmButton: false });
+        fetchCommissionRequests();
+        fetchData();
+      } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Error', text: error.response?.data?.message || 'Failed to approve', background: '#1e293b', color: '#f1f5f9' });
+      }
+    }
+  };
+
+  const handleDeclineRequest = async (request) => {
+    const { value: notes } = await Swal.fire({
+      title: 'Decline Commission Request',
+      html: `
+        <div style="text-align: left; padding: 10px 0;">
+          <div style="background: #0f172a; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+            <p style="margin: 4px 0;"><strong>Agent:</strong> ${request.agent?.name || 'Unknown'}</p>
+            <p style="margin: 4px 0;"><strong>Customer:</strong> ${request.customerPhone}</p>
+            <p style="margin: 4px 0;"><strong>Price:</strong> ${formatAmount(request.price)}</p>
+          </div>
+        </div>
+      `,
+      input: 'textarea',
+      inputLabel: 'Reason for declining (optional)',
+      inputPlaceholder: 'Enter reason...',
+      showCancelButton: true,
+      confirmButtonText: 'Decline',
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      background: '#1e293b',
+      color: '#f1f5f9'
+    });
+
+    if (notes !== undefined) {
+      try {
+        await axios.put(`${BASE_URL}/api/commission-requests/${request.id}/decline`, { adminNotes: notes }, { headers: getAuthHeaders() });
+        Swal.fire({ icon: 'success', title: 'Declined', text: 'Commission request declined', timer: 1500, background: '#1e293b', color: '#f1f5f9', showConfirmButton: false });
+        fetchCommissionRequests();
+      } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Error', text: error.response?.data?.message || 'Failed to decline', background: '#1e293b', color: '#f1f5f9' });
+      }
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchData(1);
+      fetchCommissionRequests();
     }
-  }, [isOpen, fetchData]);
+  }, [isOpen, fetchData, fetchCommissionRequests]);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
@@ -368,6 +470,15 @@ const AgentCommissionModal = ({ isOpen, onClose }) => {
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'orders' ? 'bg-emerald-500 text-white' : 'bg-dark-700 text-dark-300 hover:text-white'}`}>
             <DollarSign className="w-4 h-4" /> All Orders
           </button>
+          <button onClick={() => setActiveTab('requests')}
+            className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'requests' ? 'bg-emerald-500 text-white' : 'bg-dark-700 text-dark-300 hover:text-white'}`}>
+            <FileText className="w-4 h-4" /> Requests
+            {pendingCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                {pendingCount}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Content */}
@@ -589,7 +700,7 @@ const AgentCommissionModal = ({ isOpen, onClose }) => {
                 ))
               )}
             </div>
-          ) : (
+          ) : activeTab === 'orders' ? (
             <div>
               {/* Filters */}
               <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -719,6 +830,101 @@ const AgentCommissionModal = ({ isOpen, onClose }) => {
                   </div>
                 )}
                 </>
+              )}
+            </div>
+          ) : (
+            <div>
+              {/* Filter */}
+              <div className="flex flex-col sm:flex-row gap-3 mb-4 items-start sm:items-center justify-between">
+                <h3 className="text-white font-semibold flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-emerald-400" /> Commission Requests
+                </h3>
+                <select
+                  value={requestsFilter}
+                  onChange={(e) => setRequestsFilter(e.target.value)}
+                  className="bg-dark-900 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm focus:border-emerald-500 focus:outline-none"
+                >
+                  <option value="all">All Requests</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="DECLINED">Declined</option>
+                </select>
+              </div>
+
+              {commissionRequests.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="w-12 h-12 text-dark-600 mx-auto mb-4" />
+                  <p className="text-dark-400">No commission requests</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-dark-900">
+                      <tr className="text-left text-dark-400 text-sm">
+                        <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3">Agent</th>
+                        <th className="px-4 py-3">Customer</th>
+                        <th className="px-4 py-3">Network</th>
+                        <th className="px-4 py-3">Data</th>
+                        <th className="px-4 py-3">Price</th>
+                        <th className="px-4 py-3">Commission</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {commissionRequests.map((req) => (
+                        <tr key={req.id} className="border-t border-dark-700 hover:bg-dark-800/50">
+                          <td className="px-4 py-3 text-dark-300 text-sm">{new Date(req.createdAt).toLocaleDateString()}</td>
+                          <td className="px-4 py-3 text-white text-sm">
+                            <div>{req.agent?.name || 'Unknown'}</div>
+                            <div className="text-dark-500 text-xs">{req.agent?.phone}</div>
+                          </td>
+                          <td className="px-4 py-3 text-dark-300 text-sm">{req.customerPhone}</td>
+                          <td className="px-4 py-3 text-cyan-400 text-sm">{req.network}</td>
+                          <td className="px-4 py-3 text-dark-300 text-sm">{req.dataSize}</td>
+                          <td className="px-4 py-3 text-cyan-400 text-sm">{formatAmount(req.price)}</td>
+                          <td className="px-4 py-3 text-emerald-400 font-medium text-sm">
+                            {req.commission ? formatAmount(req.commission) : '-'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              req.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' :
+                              req.status === 'DECLINED' ? 'bg-red-500/20 text-red-400' :
+                              'bg-amber-500/20 text-amber-400'
+                            }`}>
+                              {req.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {req.status === 'PENDING' ? (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleApproveRequest(req)}
+                                  className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-medium transition-colors"
+                                  title="Approve"
+                                >
+                                  <ThumbsUp className="w-3.5 h-3.5" /> Approve
+                                </button>
+                                <button
+                                  onClick={() => handleDeclineRequest(req)}
+                                  className="flex items-center gap-1 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-lg text-xs font-medium transition-colors"
+                                  title="Decline"
+                                >
+                                  <ThumbsDown className="w-3.5 h-3.5" /> Decline
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-dark-500 text-xs">
+                                {req.adminNotes ? req.adminNotes.slice(0, 40) : '-'}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}

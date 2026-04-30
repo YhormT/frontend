@@ -20,7 +20,7 @@ const playChatAlert = () => {
   } catch(e) {}
 };
 
-const ShopChatWindow = ({ isOpen, onClose }) => {
+const ShopChatWindow = ({ isOpen, onClose, targetAgentId = null, targetAgentName = null }) => {
   const [phone, setPhone] = useState(() => localStorage.getItem('shopChatPhone') || '');
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('shopChatPhone'));
   const [admins, setAdmins] = useState([]);
@@ -144,8 +144,19 @@ const ShopChatWindow = ({ isOpen, onClose }) => {
   }, []);
 
   useEffect(() => {
-    if (isOpen && isAuthenticated) { fetchConversations(); fetchAdmins(); }
-  }, [isOpen, isAuthenticated, fetchConversations, fetchAdmins]);
+    if (isOpen && isAuthenticated) {
+      fetchConversations();
+      if (!targetAgentId) fetchAdmins();
+    }
+  }, [isOpen, isAuthenticated, fetchConversations, fetchAdmins, targetAgentId]);
+
+  // Auto-open chat with storefront agent when targetAgentId provided
+  useEffect(() => {
+    if (isOpen && isAuthenticated && targetAgentId && view === 'list' && !activeConversation) {
+      openChat(targetAgentId, { id: targetAgentId, name: targetAgentName || 'Agent' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isAuthenticated, targetAgentId]);
 
   // Poll for updates
   useEffect(() => {
@@ -381,16 +392,16 @@ const ShopChatWindow = ({ isOpen, onClose }) => {
           {/* Conversations + Admin list */}
           <div className="flex-1 overflow-y-auto">
             {conversations.map(conv => (
-              <div key={conv.id} onClick={() => openChat(conv.adminId, { id: conv.adminId, name: 'Admin' })}
+              <div key={conv.id} onClick={() => openChat(conv.adminId, { id: conv.adminId, name: conv.partnerName || 'Support' })}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-dark-700/50 cursor-pointer border-b border-dark-700/30 transition-colors">
                 <div className="relative flex-shrink-0">
                   <div className="w-11 h-11 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm">
-                    A
+                    {(conv.partnerName || 'S').charAt(0).toUpperCase()}
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline">
-                    <p className="text-white font-medium text-sm truncate">Admin</p>
+                    <p className="text-white font-medium text-sm truncate">{conv.partnerName || 'Support'}</p>
                     <span className="text-dark-500 text-xs flex-shrink-0 ml-2">{conv.lastMessage ? formatTime(conv.lastMessage.createdAt) : ''}</span>
                   </div>
                   <div className="flex justify-between items-center mt-0.5">
@@ -444,10 +455,10 @@ const ShopChatWindow = ({ isOpen, onClose }) => {
             <button onClick={() => { setView('list'); setActiveConversation(null); setActiveAdmin(null); setMessages([]); setReplyTo(null); setShowChatSearch(false); setChatSearch(''); }}
               className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg"><ArrowLeft className="w-5 h-5 text-white" /></button>
             <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-              A
+              {(activeAdmin?.name || 'S').charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white font-medium text-sm truncate">{activeAdmin?.name || 'Admin'}</p>
+              <p className="text-white font-medium text-sm truncate">{activeAdmin?.name || 'Support'}</p>
               <p className="text-cyan-100 text-xs">{typing ? 'typing...' : (activeAdmin?.isLoggedIn ? 'Online' : '')}</p>
             </div>
             <button onClick={() => { setShowChatSearch(!showChatSearch); setChatSearch(''); }}
@@ -497,7 +508,7 @@ const ShopChatWindow = ({ isOpen, onClose }) => {
                       }`}>
                         {item.replyTo && !item.isDeleted && (
                           <div className={`text-xs mb-1.5 rounded-lg px-2 py-1 border-l-2 ${isMe ? 'bg-cyan-700/50 border-cyan-300' : 'bg-dark-600/50 border-dark-400'}`}>
-                            <p className={`font-medium ${isMe ? 'text-cyan-200' : 'text-dark-300'}`}>{item.replyTo.senderType === 'customer' ? 'You' : 'Admin'}</p>
+                            <p className={`font-medium ${isMe ? 'text-cyan-200' : 'text-dark-300'}`}>{item.replyTo.senderType === 'customer' ? 'You' : (activeAdmin?.name || 'Support')}</p>
                             <p className={`truncate ${isMe ? 'text-cyan-100/70' : 'text-dark-400'}`}>{item.replyTo.isDeleted ? 'Deleted message' : item.replyTo.decryptedContent}</p>
                           </div>
                         )}
@@ -539,7 +550,7 @@ const ShopChatWindow = ({ isOpen, onClose }) => {
           {replyTo && (
             <div className="px-3 py-2 bg-dark-800 border-t border-dark-700 flex items-center gap-2">
               <div className="flex-1 border-l-2 border-cyan-500 pl-2">
-                <p className="text-cyan-400 text-xs font-medium">{replyTo.senderType === 'customer' ? 'You' : 'Admin'}</p>
+                <p className="text-cyan-400 text-xs font-medium">{replyTo.senderType === 'customer' ? 'You' : (activeAdmin?.name || 'Support')}</p>
                 <p className="text-dark-400 text-xs truncate">{replyTo.decryptedContent}</p>
               </div>
               <button onClick={() => setReplyTo(null)} className="text-dark-500 hover:text-white"><X className="w-4 h-4" /></button>

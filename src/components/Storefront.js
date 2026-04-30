@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Store, Plus, Trash2, Edit2, Copy, Check, ExternalLink, Loader2, RefreshCw, DollarSign, Package, TrendingUp, Link2, Eye, EyeOff } from 'lucide-react';
+import { X, Store, Plus, Trash2, Edit2, Copy, Check, ExternalLink, Loader2, RefreshCw, DollarSign, Package, TrendingUp, Link2, Eye, EyeOff, FileText, Send, Phone, Wifi, Database } from 'lucide-react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import BASE_URL from '../endpoints/endpoints';
@@ -29,6 +29,23 @@ const Storefront = ({ isOpen, onClose, userId }) => {
   // Edit price modal
   const [editingProduct, setEditingProduct] = useState(null);
   const [editPrice, setEditPrice] = useState('');
+
+  // Commission request tab - networks suffixed by agent role
+  const agentRole = (localStorage.getItem('role') || 'USER').toUpperCase();
+  const networkOptions = React.useMemo(() => {
+    const carriers = ['MTN', 'AirtelTigo', 'Telecel'];
+    if (agentRole === 'USER' || agentRole === 'ADMIN') return carriers;
+    return carriers.map(c => `${c} - ${agentRole}`);
+  }, [agentRole]);
+
+  const [commissionRequests, setCommissionRequests] = useState([]);
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [requestForm, setRequestForm] = useState({
+    customerPhone: '',
+    price: '',
+    network: networkOptions[0] || 'MTN',
+    dataSize: ''
+  });
 
   const fetchStorefrontData = useCallback(async () => {
     if (!userId) return;
@@ -63,12 +80,44 @@ const Storefront = ({ isOpen, onClose, userId }) => {
     }
   }, [userId]);
 
+  const fetchCommissionRequests = useCallback(async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/api/commission-requests/my-requests`, { headers: getAuthHeaders() });
+      if (res.data.success) {
+        setCommissionRequests(res.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching commission requests:', error);
+    }
+  }, []);
+
+  const handleSubmitRequest = async (e) => {
+    e.preventDefault();
+    if (!requestForm.customerPhone || !requestForm.price || !requestForm.dataSize) {
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Please fill all fields', background: '#1e293b', color: '#f1f5f9' });
+      return;
+    }
+
+    setSubmittingRequest(true);
+    try {
+      await axios.post(`${BASE_URL}/api/commission-requests`, requestForm, { headers: getAuthHeaders() });
+      Swal.fire({ icon: 'success', title: 'Request Submitted!', text: 'Admin will review your commission request', timer: 2000, background: '#1e293b', color: '#f1f5f9', showConfirmButton: false });
+      setRequestForm({ customerPhone: '', price: '', network: networkOptions[0] || 'MTN', dataSize: '' });
+      fetchCommissionRequests();
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'Error', text: error.response?.data?.message || 'Failed to submit request', background: '#1e293b', color: '#f1f5f9' });
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchStorefrontData();
       fetchReferralSummary();
+      fetchCommissionRequests();
     }
-  }, [isOpen, fetchStorefrontData, fetchReferralSummary]);
+  }, [isOpen, fetchStorefrontData, fetchReferralSummary, fetchCommissionRequests]);
 
   const copyStoreLink = () => {
     const storeUrl = `${window.location.origin}/store/${storefrontSlug}`;
@@ -180,7 +229,7 @@ const Storefront = ({ isOpen, onClose, userId }) => {
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => { fetchStorefrontData(); fetchReferralSummary(); }} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg">
+            <button onClick={() => { fetchStorefrontData(); fetchReferralSummary(); fetchCommissionRequests(); }} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg">
               <RefreshCw className={`w-5 h-5 text-white ${loading ? 'animate-spin' : ''}`} />
             </button>
             <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg">
@@ -242,6 +291,10 @@ const Storefront = ({ isOpen, onClose, userId }) => {
             <button onClick={() => setActiveTab('earnings')}
               className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'earnings' ? 'bg-violet-500 text-white' : 'text-dark-300 hover:text-white'}`}>
               <TrendingUp className="w-4 h-4 inline mr-2" />Earnings
+            </button>
+            <button onClick={() => setActiveTab('commission-requests')}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'commission-requests' ? 'bg-violet-500 text-white' : 'text-dark-300 hover:text-white'}`}>
+              <FileText className="w-4 h-4 inline mr-2" />Requests
             </button>
           </div>
         </div>
@@ -310,7 +363,7 @@ const Storefront = ({ isOpen, onClose, userId }) => {
                 </div>
               )}
             </div>
-          ) : (
+          ) : activeTab === 'earnings' ? (
             <div>
               <h3 className="text-white font-semibold mb-4">Referral Earnings</h3>
               
@@ -361,6 +414,145 @@ const Storefront = ({ isOpen, onClose, userId }) => {
                   </table>
                 </div>
               )}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Info Banner */}
+              <div className="bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/30 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-violet-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="text-white font-semibold mb-1">Commission Requests</h4>
+                    <p className="text-dark-300 text-sm">File a request for orders you served manually. Admin review and approve commission.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Form */}
+              <div className="bg-dark-900/50 border border-dark-700 rounded-xl p-4 sm:p-5">
+                <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+                  <Send className="w-5 h-5 text-violet-400" /> File New Request
+                </h3>
+                <form onSubmit={handleSubmitRequest} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-dark-300 text-sm mb-2 flex items-center gap-1.5">
+                        <Phone className="w-4 h-4" /> Customer Phone
+                      </label>
+                      <input
+                        type="tel"
+                        value={requestForm.customerPhone}
+                        onChange={(e) => setRequestForm({ ...requestForm, customerPhone: e.target.value })}
+                        placeholder="0241234567"
+                        className="w-full bg-dark-800 border border-dark-600 rounded-lg px-3 py-2.5 text-white text-sm focus:border-violet-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-dark-300 text-sm mb-2 flex items-center gap-1.5">
+                        <DollarSign className="w-4 h-4" /> Price (GHS)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={requestForm.price}
+                        onChange={(e) => setRequestForm({ ...requestForm, price: e.target.value })}
+                        placeholder="50.00"
+                        className="w-full bg-dark-800 border border-dark-600 rounded-lg px-3 py-2.5 text-white text-sm focus:border-violet-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-dark-300 text-sm mb-2 flex items-center gap-1.5">
+                        <Wifi className="w-4 h-4" /> Network
+                      </label>
+                      <select
+                        value={requestForm.network}
+                        onChange={(e) => setRequestForm({ ...requestForm, network: e.target.value })}
+                        className="w-full bg-dark-800 border border-dark-600 rounded-lg px-3 py-2.5 text-white text-sm focus:border-violet-500 focus:outline-none"
+                      >
+                        {networkOptions.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-dark-300 text-sm mb-2 flex items-center gap-1.5">
+                        <Database className="w-4 h-4" /> Data Size
+                      </label>
+                      <input
+                        type="text"
+                        value={requestForm.dataSize}
+                        onChange={(e) => setRequestForm({ ...requestForm, dataSize: e.target.value })}
+                        placeholder="e.g., 5GB"
+                        className="w-full bg-dark-800 border border-dark-600 rounded-lg px-3 py-2.5 text-white text-sm focus:border-violet-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={submittingRequest}
+                    className="w-full sm:w-auto px-6 py-2.5 bg-violet-500 hover:bg-violet-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {submittingRequest ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    Submit Request
+                  </button>
+                </form>
+              </div>
+
+              {/* Requests History */}
+              <div>
+                <h3 className="text-white font-semibold mb-4">Your Requests</h3>
+                {commissionRequests.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="w-12 h-12 text-dark-600 mx-auto mb-4" />
+                    <p className="text-dark-400">No commission requests yet</p>
+                    <p className="text-dark-500 text-sm mt-1">Submit a request above for manual orders</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-dark-900">
+                        <tr className="text-left text-dark-400 text-sm">
+                          <th className="px-4 py-3">Date</th>
+                          <th className="px-4 py-3">Customer</th>
+                          <th className="px-4 py-3">Network</th>
+                          <th className="px-4 py-3">Data</th>
+                          <th className="px-4 py-3">Price</th>
+                          <th className="px-4 py-3">Commission</th>
+                          <th className="px-4 py-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {commissionRequests.map((req) => (
+                          <tr key={req.id} className="border-t border-dark-700 hover:bg-dark-800/50">
+                            <td className="px-4 py-3 text-dark-300 text-sm">{new Date(req.createdAt).toLocaleDateString()}</td>
+                            <td className="px-4 py-3 text-white text-sm">{req.customerPhone}</td>
+                            <td className="px-4 py-3 text-cyan-400 text-sm">{req.network}</td>
+                            <td className="px-4 py-3 text-dark-300 text-sm">{req.dataSize}</td>
+                            <td className="px-4 py-3 text-cyan-400 text-sm">{formatAmount(req.price)}</td>
+                            <td className="px-4 py-3 text-emerald-400 font-medium text-sm">
+                              {req.commission ? formatAmount(req.commission) : '-'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                req.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' :
+                                req.status === 'DECLINED' ? 'bg-red-500/20 text-red-400' :
+                                'bg-amber-500/20 text-amber-400'
+                              }`}>
+                                {req.status}
+                              </span>
+                              {req.adminNotes && (
+                                <p className="text-dark-500 text-xs mt-1" title={req.adminNotes}>
+                                  Note: {req.adminNotes.length > 30 ? req.adminNotes.slice(0, 30) + '...' : req.adminNotes}
+                                </p>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

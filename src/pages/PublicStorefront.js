@@ -558,7 +558,7 @@ const PublicStorefront = () => {
       )}
 
       <ComplaintModal isOpen={showComplaintModal} onClose={() => setShowComplaintModal(false)} />
-      <ShopFloatingChatButton />
+      <ShopFloatingChatButton agentId={storefront?.agent?.id} agentName={storefront?.agent?.name} />
     </div>
   );
 };

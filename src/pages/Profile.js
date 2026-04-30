@@ -60,7 +60,7 @@ const Profile = () => {
       const userId = localStorage.getItem('userId');
       const token = localStorage.getItem('token');
       await axios.put(
-        `${BASE_URL}/api/users/${userId}`,
+        `${BASE_URL}/api/users/${userId}/profile`,
         { name: user.name, phone: user.phone },
         { headers: { Authorization: `Bearer ${token}` } }
       );
