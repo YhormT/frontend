@@ -25,6 +25,8 @@ const Storefront = ({ isOpen, onClose, userId }) => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [customPrice, setCustomPrice] = useState('');
   const [addingProduct, setAddingProduct] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
+  const [carrierFilter, setCarrierFilter] = useState('all');
 
   // Edit price modal
   const [editingProduct, setEditingProduct] = useState(null);
@@ -209,10 +211,22 @@ const Storefront = ({ isOpen, onClose, userId }) => {
     }
   };
 
-  // Filter out products already in storefront
-  const availableToAdd = availableProducts.filter(
-    p => !storefrontProducts.some(sp => sp.productId === p.id)
-  );
+  // Filter out products already in storefront, then apply search + carrier filter
+  const availableToAdd = availableProducts
+    .filter(p => !storefrontProducts.some(sp => sp.productId === p.id))
+    .filter(p => {
+      if (carrierFilter === 'all') return true;
+      const name = (p.name || '').toLowerCase();
+      if (carrierFilter === 'mtn') return name.includes('mtn');
+      if (carrierFilter === 'airteltigo') return name.includes('airteltigo') || name.includes('airtel') || name.includes('tigo');
+      if (carrierFilter === 'telecel') return name.includes('telecel') || name.includes('vodafone');
+      return true;
+    })
+    .filter(p => {
+      if (!productSearch.trim()) return true;
+      const q = productSearch.trim().toLowerCase();
+      return (p.name || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
+    });
 
   if (!isOpen) return null;
 
@@ -568,10 +582,52 @@ const Storefront = ({ isOpen, onClose, userId }) => {
                 <h3 className="text-lg sm:text-xl font-bold text-white">Add Product to Storefront</h3>
                 <p className="text-violet-100 text-xs sm:text-sm mt-1">Select a product to add</p>
               </div>
-              <button onClick={() => { setShowAddModal(false); setSelectedProduct(null); setCustomPrice(''); }}
+              <button onClick={() => { setShowAddModal(false); setSelectedProduct(null); setCustomPrice(''); setProductSearch(''); setCarrierFilter('all'); }}
                 className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors">
                 <X className="w-5 h-5 text-white" />
               </button>
+            </div>
+
+            {/* Search + Filters */}
+            <div className="px-3 sm:px-5 pt-3 sm:pt-4 pb-2 border-b border-dark-700 bg-dark-900/40 sticky top-[64px] sm:top-[76px] z-10">
+              <div className="relative mb-3">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Search products..."
+                  className="w-full bg-dark-800 border border-dark-600 rounded-lg pl-10 pr-9 py-2.5 text-white text-sm placeholder-dark-500 focus:border-violet-500 focus:outline-none"
+                />
+                {productSearch && (
+                  <button onClick={() => setProductSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-dark-700 rounded">
+                    <X className="w-4 h-4 text-dark-400" />
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'all', label: 'All', color: 'violet' },
+                  { key: 'mtn', label: 'MTN', color: 'amber' },
+                  { key: 'airteltigo', label: 'AirtelTigo', color: 'red' },
+                  { key: 'telecel', label: 'Telecel', color: 'cyan' }
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setCarrierFilter(f.key)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                      carrierFilter === f.key
+                        ? 'bg-violet-500 text-white shadow-md shadow-violet-500/30'
+                        : 'bg-dark-800 border border-dark-600 text-dark-300 hover:text-white hover:border-violet-500/50'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+                <span className="ml-auto text-dark-400 text-xs self-center">
+                  {availableToAdd.length} product{availableToAdd.length === 1 ? '' : 's'}
+                </span>
+              </div>
             </div>
 
             {/* Products Grid */}
