@@ -6,7 +6,7 @@ import BASE_URL from '../endpoints/endpoints';
 import ComplaintModal from '../components/ComplaintModal';
 import ShopAnnouncementBanner from '../components/ShopAnnouncementBanner';
 import ShopFloatingChatButton from '../components/ShopFloatingChatButton';
-import { WhatsAppCommunityBanner, WhatsAppCommunityFAB } from '../components/WhatsAppCommunity';
+import { WhatsAppCommunityBanner } from '../components/WhatsAppCommunity';
 import getSocket from '../utils/socket';
 
 
@@ -696,7 +696,7 @@ const Shop = () => {
       )}
 
       <ComplaintModal isOpen={showComplaintModal} onClose={() => setShowComplaintModal(false)} />
-      <WhatsAppCommunityFAB />
+      {/* <WhatsAppCommunityFAB /> */}
       <ShopFloatingChatButton />
 
       {/* Shop Alert Popup - shows every visit, only closes on OK */}
