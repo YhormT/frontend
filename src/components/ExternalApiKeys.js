@@ -1,19 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Key, Plus, Trash2, Loader2, Copy, Check, Shield, ShieldOff, Globe, Clock, Hash, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, Key, Plus, Trash2, Loader2, Copy, Check, Shield, ShieldOff, Globe, Clock, Hash, ChevronDown, ChevronRight, User, Wallet, Search } from 'lucide-react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import BASE_URL from '../endpoints/endpoints';
 
 const ExternalApiKeys = ({ isOpen, onClose }) => {
   const [apiKeys, setApiKeys] = useState([]);
+  const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState('');
   const [partnerName, setPartnerName] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newlyCreatedKey, setNewlyCreatedKey] = useState(null);
   const [copiedKeyId, setCopiedKeyId] = useState(null);
   const [showDocs, setShowDocs] = useState(false);
   const [expandedEndpoint, setExpandedEndpoint] = useState(null);
+  const [agentSearch, setAgentSearch] = useState('');
 
   const getHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
@@ -29,26 +32,50 @@ const ExternalApiKeys = ({ isOpen, onClose }) => {
     }
   }, []);
 
+  const fetchAgents = useCallback(async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/api/external/admin/agents`, { headers: getHeaders() });
+      setAgents(res.data?.data || []);
+    } catch (error) {
+      console.error('Error fetching agents:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
       fetchApiKeys();
+      fetchAgents();
       setNewlyCreatedKey(null);
       setShowCreateForm(false);
+      setSelectedAgentId('');
       setPartnerName('');
+      setAgentSearch('');
     }
-  }, [isOpen, fetchApiKeys]);
+  }, [isOpen, fetchApiKeys, fetchAgents]);
+
+  const filteredAgents = agents.filter(a =>
+    a.name.toLowerCase().includes(agentSearch.toLowerCase()) ||
+    (a.phone && a.phone.includes(agentSearch))
+  );
+
+  const selectedAgent = agents.find(a => a.id === parseInt(selectedAgentId));
 
   const handleCreate = async () => {
-    if (!partnerName.trim()) {
-      Swal.fire({ icon: 'error', title: 'Error', text: 'Partner name is required', background: '#1e293b', color: '#f1f5f9' });
+    if (!selectedAgentId) {
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Please select an agent', background: '#1e293b', color: '#f1f5f9' });
       return;
     }
     setCreating(true);
     try {
-      const res = await axios.post(`${BASE_URL}/api/external/admin/keys`, { partnerName: partnerName.trim() }, { headers: getHeaders() });
+      const res = await axios.post(`${BASE_URL}/api/external/admin/keys`, {
+        agentId: parseInt(selectedAgentId),
+        partnerName: partnerName.trim() || undefined
+      }, { headers: getHeaders() });
       setNewlyCreatedKey(res.data?.data);
+      setSelectedAgentId('');
       setPartnerName('');
       setShowCreateForm(false);
+      setAgentSearch('');
       fetchApiKeys();
       Swal.fire({ icon: 'success', title: 'API Key Created!', text: 'Copy the key now — it won\'t be shown again.', background: '#1e293b', color: '#f1f5f9' });
     } catch (error) {
@@ -131,7 +158,7 @@ const ExternalApiKeys = ({ isOpen, onClose }) => {
             <Key className="w-6 h-6 text-white" />
             <div>
               <h2 className="text-lg font-bold text-white">External API Keys</h2>
-              <p className="text-white/70 text-xs">Manage partner API access for order integration</p>
+              <p className="text-white/70 text-xs">Generate API keys for agents — orders debit agent wallets</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors">
@@ -146,7 +173,7 @@ const ExternalApiKeys = ({ isOpen, onClose }) => {
             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Check className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-emerald-400 font-semibold">New API Key Created for "{newlyCreatedKey.partnerName}"</h3>
+                <h3 className="text-emerald-400 font-semibold">API Key Created for {newlyCreatedKey.agentName || newlyCreatedKey.partnerName}</h3>
               </div>
               <p className="text-amber-400 text-xs mb-3">⚠️ Copy this key now — it will NOT be shown again!</p>
               <div className="flex items-center gap-2">
@@ -181,26 +208,90 @@ const ExternalApiKeys = ({ isOpen, onClose }) => {
 
           {/* Create Form */}
           {showCreateForm && (
-            <div className="bg-dark-900 border border-dark-600 rounded-xl p-4">
-              <h3 className="text-white font-semibold mb-3">Generate API Key for Partner</h3>
-              <div className="flex gap-2">
+            <div className="bg-dark-900 border border-dark-600 rounded-xl p-4 space-y-3">
+              <h3 className="text-white font-semibold">Generate API Key for Agent</h3>
+              <p className="text-dark-400 text-xs">Select the agent who will use this API key. Orders placed via this key will debit the agent's wallet.</p>
+
+              {/* Agent Search & Select */}
+              <div>
+                <label className="text-dark-300 text-xs font-medium mb-1 block">Select Agent *</label>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-dark-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search agents by name or phone..."
+                    value={agentSearch}
+                    onChange={(e) => setAgentSearch(e.target.value)}
+                    className="w-full bg-dark-800 border border-dark-600 rounded-xl pl-9 pr-4 py-2.5 text-white placeholder-dark-500 focus:border-violet-500 focus:outline-none text-sm"
+                  />
+                </div>
+                <div className="mt-2 max-h-40 overflow-y-auto bg-dark-800 border border-dark-600 rounded-xl">
+                  {filteredAgents.length === 0 ? (
+                    <p className="text-dark-500 text-xs text-center py-3">No agents found</p>
+                  ) : (
+                    filteredAgents.map(agent => (
+                      <button
+                        key={agent.id}
+                        onClick={() => { setSelectedAgentId(String(agent.id)); setAgentSearch(''); }}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-dark-700/50 transition-colors border-b border-dark-700 last:border-b-0 ${parseInt(selectedAgentId) === agent.id ? 'bg-violet-500/10 border-l-2 border-l-violet-500' : ''}`}
+                      >
+                        <User className="w-4 h-4 text-dark-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm font-medium truncate">{agent.name}</p>
+                          <div className="flex items-center gap-2 text-xs text-dark-500">
+                            <span className="capitalize">{agent.role}</span>
+                            {agent.phone && <span>{agent.phone}</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs flex-shrink-0">
+                          <Wallet className="w-3 h-3 text-emerald-400" />
+                          <span className={`font-medium ${agent.loanBalance > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            GHS {(agent.loanBalance || 0).toFixed(2)}
+                          </span>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Selected Agent Preview */}
+              {selectedAgent && (
+                <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl p-3 flex items-center gap-3">
+                  <User className="w-5 h-5 text-violet-400" />
+                  <div className="flex-1">
+                    <p className="text-white text-sm font-semibold">{selectedAgent.name}</p>
+                    <p className="text-dark-400 text-xs capitalize">{selectedAgent.role} {selectedAgent.phone ? `| ${selectedAgent.phone}` : ''}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-dark-400">Wallet</p>
+                    <p className={`text-sm font-bold ${selectedAgent.loanBalance > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      GHS {(selectedAgent.loanBalance || 0).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Optional Label */}
+              <div>
+                <label className="text-dark-300 text-xs font-medium mb-1 block">Label (optional)</label>
                 <input
                   type="text"
-                  placeholder="Partner name (e.g. Friend's Website)"
+                  placeholder="e.g. Agent's Website, Shop Integration..."
                   value={partnerName}
                   onChange={(e) => setPartnerName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-                  className="flex-1 bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white placeholder-dark-500 focus:border-violet-500 focus:outline-none text-sm"
+                  className="w-full bg-dark-800 border border-dark-600 rounded-xl px-4 py-2.5 text-white placeholder-dark-500 focus:border-violet-500 focus:outline-none text-sm"
                 />
-                <button
-                  onClick={handleCreate}
-                  disabled={creating}
-                  className="px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-xl text-sm font-medium hover:from-violet-600 hover:to-purple-600 disabled:opacity-50 flex items-center gap-2"
-                >
-                  {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
-                  {creating ? 'Creating...' : 'Create'}
-                </button>
               </div>
+
+              <button
+                onClick={handleCreate}
+                disabled={creating || !selectedAgentId}
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-xl text-sm font-medium hover:from-violet-600 hover:to-purple-600 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+                {creating ? 'Creating...' : 'Generate API Key'}
+              </button>
             </div>
           )}
 
@@ -208,9 +299,12 @@ const ExternalApiKeys = ({ isOpen, onClose }) => {
           {showDocs && (
             <div className="bg-dark-900 border border-dark-600 rounded-xl p-4 space-y-3">
               <h3 className="text-white font-semibold flex items-center gap-2">
-                <Globe className="w-4 h-4 text-violet-400" /> API Documentation (share with your partner)
+                <Globe className="w-4 h-4 text-violet-400" /> API Documentation (share with agent)
               </h3>
               <div className="text-dark-300 text-sm space-y-3">
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5">
+                  <p className="text-amber-400 text-xs font-medium">Orders placed via API debit the agent's wallet. If the wallet balance is insufficient, the order will be rejected.</p>
+                </div>
                 <div>
                   <p className="text-white font-medium mb-1">Base URL:</p>
                   <code className="bg-dark-800 text-violet-300 px-2 py-1 rounded text-xs">{baseUrl}/api/external</code>
@@ -262,7 +356,7 @@ const ExternalApiKeys = ({ isOpen, onClose }) => {
                       </button>
                       {expandedEndpoint === 'orders' && (
                         <div className="px-3 pb-3 pt-0 border-t border-dark-700 space-y-2">
-                          <p className="text-dark-400 text-xs mt-2">Submit one or more items for processing. Each item needs a productId, quantity, and mobileNumber.</p>
+                          <p className="text-dark-400 text-xs mt-2">Submit one or more items for processing. Each item needs a productId, quantity, and mobileNumber. The order total will be debited from the agent's wallet.</p>
                           <div>
                             <p className="text-dark-300 text-xs font-medium mb-1">Request Body:</p>
                             <pre className="bg-dark-900 text-blue-300 text-xs p-2 rounded overflow-x-auto">{`{
@@ -284,12 +378,13 @@ const ExternalApiKeys = ({ isOpen, onClose }) => {
     "orderId": 456,
     "status": "Pending",
     "totalPrice": 5.00,
+    "walletBalanceAfter": 95.00,
     "items": [...],
     "createdAt": "2025-03-03T10:30:00.000Z"
   }
 }`}</pre>
                           </div>
-                          <p className="text-amber-400/80 text-xs">Save the orderId to check status later.</p>
+                          <p className="text-amber-400/80 text-xs">If wallet balance is insufficient, you'll get a 400 error with the required vs available balance.</p>
                         </div>
                       )}
                     </div>
@@ -375,11 +470,11 @@ const ExternalApiKeys = ({ isOpen, onClose }) => {
             <div className="text-center py-12">
               <Key className="w-12 h-12 text-dark-600 mx-auto mb-3" />
               <p className="text-dark-400">No API keys generated yet</p>
-              <p className="text-dark-500 text-sm">Click "Generate New Key" to create one for your partner</p>
+              <p className="text-dark-500 text-sm">Click "Generate New Key" to create one for an agent</p>
             </div>
           ) : (
             <div className="space-y-3">
-              <h3 className="text-dark-400 text-sm font-medium uppercase tracking-wider">Active Keys ({apiKeys.length})</h3>
+              <h3 className="text-dark-400 text-sm font-medium uppercase tracking-wider">API Keys ({apiKeys.length})</h3>
               {apiKeys.map((key) => (
                 <div key={key.id} className={`bg-dark-900 border rounded-xl p-4 transition-all ${key.isActive ? 'border-dark-600 hover:border-violet-500/30' : 'border-red-500/20 opacity-60'}`}>
                   <div className="flex items-start justify-between gap-3">
@@ -390,15 +485,28 @@ const ExternalApiKeys = ({ isOpen, onClose }) => {
                         ) : (
                           <ShieldOff className="w-4 h-4 text-red-400 flex-shrink-0" />
                         )}
-                        <h4 className="text-white font-semibold truncate">{key.partnerName}</h4>
+                        <h4 className="text-white font-semibold truncate">{key.agentName}</h4>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${key.isActive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
                           {key.isActive ? 'Active' : 'Revoked'}
                         </span>
                       </div>
+                      {key.partnerName && key.partnerName !== key.agentName && (
+                        <p className="text-dark-400 text-xs mb-1">Label: {key.partnerName}</p>
+                      )}
                       <div className="flex items-center gap-1 mb-2">
                         <code className="text-dark-400 text-xs font-mono">{key.apiKeyPreview}</code>
                       </div>
-                      <div className="flex items-center gap-4 text-xs text-dark-500">
+                      <div className="flex items-center gap-4 text-xs text-dark-500 flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <User className="w-3 h-3" />
+                          <span className="capitalize">{key.agentRole}</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Wallet className="w-3 h-3" />
+                          <span className={key.agentBalance > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                            GHS {(key.agentBalance || 0).toFixed(2)}
+                          </span>
+                        </span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           Created: {new Date(key.createdAt).toLocaleDateString()}
@@ -418,7 +526,7 @@ const ExternalApiKeys = ({ isOpen, onClose }) => {
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {key.isActive ? (
                         <button
-                          onClick={() => handleRevoke(key.id, key.partnerName)}
+                          onClick={() => handleRevoke(key.id, key.agentName)}
                           className="p-2 text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
                           title="Revoke key"
                         >
@@ -434,7 +542,7 @@ const ExternalApiKeys = ({ isOpen, onClose }) => {
                         </button>
                       )}
                       <button
-                        onClick={() => handleDelete(key.id, key.partnerName)}
+                        onClick={() => handleDelete(key.id, key.agentName)}
                         className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                         title="Delete permanently"
                       >
